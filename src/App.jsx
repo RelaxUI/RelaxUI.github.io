@@ -487,13 +487,6 @@ const getDefaultGraph = () => {
       target: imgOutId,
       targetHandle: "in1",
     },
-    {
-      id: generateId("e"),
-      source: macroObj.nodes[0].id,
-      sourceHandle: "text",
-      target: textOutId,
-      targetHandle: "in",
-    },
   ];
 
   return {
