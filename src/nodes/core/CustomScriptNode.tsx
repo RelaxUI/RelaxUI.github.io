@@ -1,0 +1,60 @@
+import { RuntimeContext } from "@/context/RuntimeContext.ts";
+import { BaseNode } from "@/nodes/BaseNode.tsx";
+import { useUpdateNodeInternals } from "@xyflow/react";
+import { useContext, useEffect } from "react";
+
+export const CustomScriptNode = (props: any) => {
+  const { updateNodeData, removeEdgeByHandle } = useContext(RuntimeContext)!;
+  const updateNodeInternals = useUpdateNodeInternals();
+  const inputsList: string[] = props.data.inputs || [
+    "in1",
+    "in2",
+    "in3",
+    "in4",
+  ];
+
+  useEffect(() => {
+    updateNodeInternals(props.id);
+  }, [inputsList.length, props.id, updateNodeInternals]);
+
+  const handleAddInput = () =>
+    updateNodeData(props.id, "inputs", [
+      ...inputsList,
+      "in" + (inputsList.length + 1),
+    ]);
+  const handleRemoveInput = () => {
+    if (inputsList.length > 0) {
+      removeEdgeByHandle(props.id, inputsList[inputsList.length - 1]!);
+      updateNodeData(props.id, "inputs", inputsList.slice(0, -1));
+    }
+  };
+
+  return (
+    <BaseNode {...props}>
+      <div className="flex justify-between items-center mb-2 px-1">
+        <span className="text-[10px] text-[#5a6b7c] font-bold tracking-widest">
+          PORTS ({inputsList.length})
+        </span>
+        <div className="flex gap-1">
+          <button
+            onClick={handleAddInput}
+            className="w-5 h-5 flex items-center justify-center bg-[#1f2630] rounded text-[#00e5ff] hover:bg-[#00e5ff] hover:text-[#0b0e14] transition-colors text-[10px] font-bold"
+          >
+            +
+          </button>
+          <button
+            onClick={handleRemoveInput}
+            className="w-5 h-5 flex items-center justify-center bg-[#1f2630] rounded text-red-500 hover:bg-red-500 hover:text-white transition-colors text-[10px] font-bold"
+          >
+            -
+          </button>
+        </div>
+      </div>
+      <textarea
+        className="nowheel nodrag w-full flex-1 bg-[#0b0e14]/60 border border-[#1f2630] rounded p-2 text-xs font-mono text-white focus:outline-none focus:border-[#00e5ff] resize-none custom-scrollbar"
+        value={props.data.script}
+        onChange={(e) => updateNodeData(props.id, "script", e.target.value)}
+      />
+    </BaseNode>
+  );
+};

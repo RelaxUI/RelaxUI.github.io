@@ -1,1 +1,17 @@
 @import "tailwindcss";
+
+:root {
+  --relax-bg-primary: #0b0e14;
+  --relax-bg-elevated: #131820;
+  --relax-border: #1f2630;
+  --relax-border-hover: #2a323d;
+  --relax-border-active: #3f4b59;
+  --relax-text-muted: #5a6b7c;
+  --relax-text-default: #a0aec0;
+  --relax-text-bright: #ffffff;
+  --relax-accent: #00e5ff;
+  --relax-accent-dim: rgba(0, 229, 255, 0.15);
+  --relax-success: #00ffaa;
+  --relax-error: #ef4444;
+  --relax-accent-gradient: linear-gradient(to top right, #00e5ff, #007acc);
+}
