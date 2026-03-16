@@ -1,3 +1,4 @@
+import { DEFAULTS, getDefaultDevice } from "@/config/defaults.ts";
 import { GENERATION_PARAMS } from "@/config/generationDefaults.ts";
 import { PIPELINE_TASKS } from "@/config/pipelineRegistry.ts";
 import type { GraphRunner } from "@/engine/GraphRunner.ts";
@@ -37,10 +38,18 @@ function float32ToWavBlob(samples: Float32Array, sampleRate: number): Blob {
   return new Blob([buf], { type: "audio/wav" });
 }
 
+/**
+ * Normalise ONNX filename suffixes to the dtype strings transformers.js expects.
+ * e.g. "_quantized.onnx" is what transformers.js loads for dtype "q8".
+ */
+const DTYPE_NORMALIZE: Record<string, string> = {
+  quantized: "q8",
+};
+
 function parseDtype(dtype: any): any {
   if (!dtype) return undefined;
-  if (typeof dtype === "string") return dtype;
-  // Support JSON string for per-module quantization
+  if (typeof dtype === "string") return DTYPE_NORMALIZE[dtype] ?? dtype;
+  // Support JSON object for per-module quantization
   if (typeof dtype === "object") return dtype;
   try {
     return JSON.parse(dtype);
@@ -58,7 +67,7 @@ export async function pipelineExecutor(
 
   const task = node.data.task;
   const modelId = inputs.model_id || node.data.model_id || "";
-  const device = inputs.device || node.data.device || "wasm";
+  const device = inputs.device || node.data.device || getDefaultDevice();
   const dtype = inputs.dtype || node.data.dtype || undefined;
 
   const cacheKey = `${task}:${modelId}:${device}:${JSON.stringify(dtype)}`;
@@ -183,12 +192,33 @@ export async function modelLoaderExecutor(
 
   const modelClass = node.data.modelClass || "AutoModel";
   const modelId = node.data.model_id || "";
-  const device = node.data.device || "wasm";
+  const device = node.data.device || getDefaultDevice();
   const dtype = node.data.dtype || undefined;
 
   const ModelClass = (transformers as any)[modelClass];
   if (!ModelClass?.from_pretrained) {
-    throw new Error(`Unknown model class: ${modelClass}`);
+    const available = [
+      "AutoModel",
+      "AutoModelForCausalLM",
+      "AutoModelForSeq2SeqLM",
+      "AutoModelForMaskedLM",
+      "AutoModelForSequenceClassification",
+      "AutoModelForTokenClassification",
+      "AutoModelForQuestionAnswering",
+      "AutoModelForImageClassification",
+      "AutoModelForObjectDetection",
+      "AutoModelForImageSegmentation",
+      "AutoModelForSemanticSegmentation",
+      "AutoModelForUniversalSegmentation",
+      "AutoModelForMaskGeneration",
+      "AutoModelForSpeechSeq2Seq",
+      "AutoModelForTextToSpectrogram",
+      "AutoModelForTextToWaveform",
+      "AutoModelForVision2Seq",
+    ];
+    throw new Error(
+      `Unknown model class: "${modelClass}". Available: ${available.join(", ")}`,
+    );
   }
 
   const cacheKey = `model:${modelClass}:${modelId}:${device}:${JSON.stringify(dtype)}`;
@@ -312,6 +342,12 @@ export async function generateExecutor(
     });
   }
 
+  if (!model.generate || typeof model.generate !== "function") {
+    throw new Error(
+      `Model does not support .generate(). Use a "Model Call" node instead.`,
+    );
+  }
+
   const outputs = await model.generate({
     ...tensorInputs,
     ...nodeGenParams,
@@ -383,7 +419,7 @@ export async function processorExecutor(
       const audioCtx = new (
         globalThis.AudioContext ||
         (globalThis as any).webkitAudioContext
-      )({ sampleRate: 16000 });
+      )({ sampleRate: node.data.sampleRate || DEFAULTS.audioSampleRate });
       const audioBuffer = await audioCtx.decodeAudioData(arrayBuffer);
       audioData = audioBuffer.getChannelData(0);
       await audioCtx.close();
@@ -482,4 +518,240 @@ export function audioOutputExecutor(
   ctx: GraphRunner,
 ): void {
   ctx.setDisplayData(node.id, inputs.audio, false);
+}
+
+/* ── Model Call Executor (forward pass, no .generate()) ──────────────── */
+
+export async function modelCallExecutor(
+  node: FlowNode,
+  inputs: Record<string, any>,
+  ctx: GraphRunner,
+): Promise<void> {
+  const model = inputs.model;
+  if (!model) throw new Error("No model connected to Model Call node");
+
+  const tensorInputs = inputs.tensors || {};
+  const outputs = await model(tensorInputs);
+  ctx.pushValue(node.id, "outputs", outputs);
+  ctx.setRunStatus("COMPLETED");
+}
+
+/* ── Post-Process Call Executor ──────────────────────────────────────── */
+
+export async function postProcessCallExecutor(
+  node: FlowNode,
+  inputs: Record<string, any>,
+  ctx: GraphRunner,
+): Promise<void> {
+  const category: string = node.data.postProcessCategory || "base";
+  const rawOutputs = inputs.outputs;
+  if (!rawOutputs) throw new Error("No outputs connected to Post-Process node");
+
+  const tokenizer = inputs.tokenizer;
+  const processor = inputs.processor;
+  const encodedInputs = inputs.encoded_inputs;
+
+  let result: any;
+
+  switch (category) {
+    case "masked-lm": {
+      if (!tokenizer) throw new Error("Masked LM post-processing requires a tokenizer");
+      const logits = rawOutputs.logits;
+      if (!logits) {
+        result = { predictions: [], raw: rawOutputs };
+        break;
+      }
+      const inputIds = encodedInputs?.input_ids;
+      const topK = node.data.topK || DEFAULTS.maskedLmTopK;
+      const predictions: any[] = [];
+
+      if (inputIds) {
+        const ids = inputIds.tolist ? inputIds.tolist()[0] : Array.from(inputIds.data || []);
+        const maskTokenId = tokenizer.model?.tokens_to_ids?.get("[MASK]") ?? tokenizer.convert_tokens_to_ids?.("[MASK]") ?? 103;
+
+        for (let i = 0; i < ids.length; i++) {
+          if (ids[i] === maskTokenId) {
+            const tokenLogits: number[] = logits.data
+              ? Array.from(logits.data.slice(i * logits.dims[2], (i + 1) * logits.dims[2]) as ArrayLike<number>)
+              : [];
+            const indexed = tokenLogits.map((v, idx) => ({ v, idx }));
+            indexed.sort((a, b) => b.v - a.v);
+            const topTokens = indexed.slice(0, topK);
+
+            // Softmax over top-k
+            const maxVal = topTokens[0]?.v ?? 0;
+            const exps = topTokens.map((t) => Math.exp(t.v - maxVal));
+            const sumExp = exps.reduce((a, b) => a + b, 0);
+
+            for (let j = 0; j < topTokens.length; j++) {
+              const decoded = tokenizer.decode([topTokens[j]!.idx], { skip_special_tokens: true });
+              predictions.push({
+                position: i,
+                token: decoded.trim(),
+                score: exps[j]! / sumExp,
+              });
+            }
+          }
+        }
+      }
+      result = { predictions };
+      break;
+    }
+
+    case "sequence-classification": {
+      const logits = rawOutputs.logits;
+      if (!logits) { result = { labels: [] }; break; }
+      const data: number[] = logits.data ? Array.from(logits.data as ArrayLike<number>) : [];
+      // Softmax
+      const maxVal = Math.max(...data);
+      const exps = data.map((v) => Math.exp(v - maxVal));
+      const sumExp = exps.reduce((a, b) => a + b, 0);
+      const probs = exps.map((v) => v / sumExp);
+      result = {
+        labels: probs.map((score: number, i: number) => ({
+          label: `LABEL_${i}`,
+          score,
+        })).sort((a: any, b: any) => b.score - a.score),
+      };
+      break;
+    }
+
+    case "token-classification": {
+      const logits = rawOutputs.logits;
+      if (!logits || !tokenizer || !encodedInputs) {
+        result = { entities: [] };
+        break;
+      }
+      const seqLen = logits.dims[1];
+      const numLabels = logits.dims[2];
+      const entities: any[] = [];
+      const inputIds = encodedInputs.input_ids;
+      const ids = inputIds?.tolist ? inputIds.tolist()[0] : Array.from(inputIds?.data || []);
+
+      for (let i = 0; i < seqLen; i++) {
+        const tokenLogits: number[] = Array.from(
+          logits.data.slice(i * numLabels, (i + 1) * numLabels) as ArrayLike<number>,
+        );
+        const argmax = tokenLogits.indexOf(Math.max(...tokenLogits));
+        if (argmax > 0) {
+          const token = tokenizer.decode([ids[i]], { skip_special_tokens: false });
+          entities.push({ index: i, token: token.trim(), label: `LABEL_${argmax}` });
+        }
+      }
+      result = { entities };
+      break;
+    }
+
+    case "question-answering": {
+      const startLogits = rawOutputs.start_logits;
+      const endLogits = rawOutputs.end_logits;
+      if (!startLogits || !endLogits || !tokenizer || !encodedInputs) {
+        result = { answer: "", score: 0 };
+        break;
+      }
+      const sData: number[] = Array.from(startLogits.data as ArrayLike<number>);
+      const eData: number[] = Array.from(endLogits.data as ArrayLike<number>);
+      const startIdx = sData.indexOf(Math.max(...sData));
+      const endIdx = eData.indexOf(Math.max(...eData));
+      const inputIds = encodedInputs.input_ids;
+      const ids = inputIds?.tolist ? inputIds.tolist()[0] : Array.from(inputIds?.data || []);
+      const answerIds = ids.slice(startIdx, endIdx + 1);
+      const answer = tokenizer.decode(answerIds, { skip_special_tokens: true });
+      result = {
+        answer: answer.trim(),
+        score: (sData[startIdx] as number) + (eData[endIdx] as number),
+        start: startIdx,
+        end: endIdx,
+      };
+      break;
+    }
+
+    case "image-classification": {
+      const logits = rawOutputs.logits;
+      if (!logits) { result = { labels: [] }; break; }
+      const data: number[] = logits.data ? Array.from(logits.data as ArrayLike<number>) : [];
+      const maxVal = Math.max(...data);
+      const exps = data.map((v) => Math.exp(v - maxVal));
+      const sumExp = exps.reduce((a, b) => a + b, 0);
+      const probs = exps.map((v) => v / sumExp);
+      result = {
+        labels: probs.map((score: number, i: number) => ({
+          label: `CLASS_${i}`,
+          score,
+        })).sort((a: any, b: any) => b.score - a.score).slice(0, 10),
+      };
+      break;
+    }
+
+    case "object-detection": {
+      if (processor?.post_process_object_detection) {
+        try {
+          result = processor.post_process_object_detection(rawOutputs);
+          break;
+        } catch { /* fallthrough */ }
+      }
+      result = {
+        logits: rawOutputs.logits ? "tensor" : undefined,
+        pred_boxes: rawOutputs.pred_boxes ? "tensor" : undefined,
+        raw: rawOutputs,
+      };
+      break;
+    }
+
+    case "image-segmentation":
+    case "semantic-segmentation":
+    case "universal-segmentation": {
+      result = {
+        masks: rawOutputs.pred_masks || rawOutputs.masks_queries_logits || rawOutputs.logits,
+        raw: rawOutputs,
+      };
+      break;
+    }
+
+    case "mask-generation": {
+      result = {
+        iou_scores: rawOutputs.iou_scores,
+        pred_masks: rawOutputs.pred_masks,
+      };
+      break;
+    }
+
+    case "spectrogram": {
+      // SpeechT5 raw call output - spectrogram frames
+      // Note: Full TTS requires generate_speech() with speaker embeddings + vocoder
+      // The call-only workflow outputs raw logits/spectrogram data
+      result = {
+        spectrogram: rawOutputs.spectrogram || rawOutputs.logits,
+        raw: rawOutputs,
+      };
+      break;
+    }
+
+    case "text-to-waveform": {
+      const waveform = rawOutputs.waveform;
+      if (waveform) {
+        const samples =
+          waveform instanceof Float32Array
+            ? waveform
+            : waveform.data
+              ? new Float32Array(waveform.data)
+              : null;
+        if (samples) {
+          result = float32ToWavBlob(samples, node.data.sampleRate || DEFAULTS.audioSampleRate);
+          break;
+        }
+      }
+      result = rawOutputs;
+      break;
+    }
+
+    case "base":
+    default: {
+      result = rawOutputs;
+      break;
+    }
+  }
+
+  ctx.pushValue(node.id, "result", result);
+  ctx.setRunStatus("COMPLETED");
 }

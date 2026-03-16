@@ -4,9 +4,10 @@ import { useContext, useState } from "react";
 
 export const MediaInputNode = (props: any) => {
   const { updateNodeData, setFullscreenImage } = useContext(RuntimeContext)!;
-  const mediaType: "image" | "audio" =
-    props.data.mediaType || (props.type === "audioInput" ? "audio" : "image");
+  const mediaType: "image" | "audio" | "video" =
+    props.data.mediaType || (props.type === "audioInput" ? "audio" : props.type === "videoInput" ? "video" : "image");
   const isImage = mediaType === "image";
+  const isVideo = mediaType === "video";
   const [mode, setMode] = useState<"file" | "url">(
     props.data.value?.startsWith("http") ? "url" : "file",
   );
@@ -37,29 +38,31 @@ export const MediaInputNode = (props: any) => {
           placeholder={
             isImage
               ? "https://example.com/image.jpg"
-              : "https://example.com/audio.wav"
+              : isVideo
+                ? "https://example.com/video.mp4"
+                : "https://example.com/audio.wav"
           }
           className="w-full bg-[var(--relax-bg-primary)] border border-[var(--relax-border)] rounded p-2 mb-2 text-[10px] font-mono text-white focus:outline-none focus:border-[var(--relax-accent)] nodrag nowheel shrink-0"
         />
       )}
 
       <div
-        className={`flex-1 w-full flex flex-col items-center justify-center border border-dashed border-[var(--relax-border)] rounded bg-[var(--relax-bg-primary)]/60 transition-colors ${hasValue ? (isImage ? "min-h-[140px] border-none" : "border-none") : "hover:border-[var(--relax-accent)]"}`}
+        className={`flex-1 w-full flex flex-col items-center justify-center border border-dashed border-[var(--relax-border)] rounded bg-[var(--relax-bg-primary)]/60 transition-colors ${hasValue ? ((isImage || isVideo) ? "min-h-[140px] border-none" : "border-none") : "hover:border-[var(--relax-accent)]"}`}
       >
         {!hasValue ? (
           mode === "file" ? (
             <label className="w-full h-full min-h-[100px] flex flex-col items-center justify-center cursor-pointer">
               <span className="text-[10px] text-[var(--relax-text-muted)] font-bold tracking-widest">
-                {isImage ? "CLICK TO UPLOAD" : "UPLOAD AUDIO"}
+                {isImage ? "CLICK TO UPLOAD" : isVideo ? "UPLOAD VIDEO" : "UPLOAD AUDIO"}
               </span>
               <input
                 type="file"
-                accept={isImage ? "image/*" : "audio/*"}
+                accept={isImage ? "image/*" : isVideo ? "video/*" : "audio/*"}
                 className="hidden"
                 onChange={(e) => {
                   const file = (e.target as HTMLInputElement).files?.[0];
                   if (file) {
-                    if (!isImage) {
+                    if (!isImage || isVideo) {
                       updateNodeData(props.id, "fileName", file.name);
                     }
                     const r = new FileReader();
@@ -72,9 +75,23 @@ export const MediaInputNode = (props: any) => {
             </label>
           ) : (
             <div className="text-[10px] text-[var(--relax-text-muted)] min-h-[100px] flex items-center justify-center">
-              {isImage ? "NO IMAGE URL PROVIDED" : "NO AUDIO URL PROVIDED"}
+              {isImage ? "NO IMAGE URL PROVIDED" : isVideo ? "NO VIDEO URL PROVIDED" : "NO AUDIO URL PROVIDED"}
             </div>
           )
+        ) : isVideo ? (
+          <div className="relative w-full h-full flex flex-col items-center justify-center group/vid">
+            <video
+              src={props.data.value}
+              controls
+              className="w-full h-full object-contain max-h-[300px] rounded nodrag nowheel"
+            />
+            <button
+              onClick={() => updateNodeData(props.id, "value", "")}
+              className="absolute top-2 right-2 bg-[var(--relax-bg-primary)]/90 text-white border border-[var(--relax-border-hover)] rounded px-3 py-1.5 text-[9px] font-bold opacity-0 group-hover/vid:opacity-100 hover:bg-red-500 transition-all shadow-lg"
+            >
+              CLEAR
+            </button>
+          </div>
         ) : isImage ? (
           <div className="relative w-full h-full flex flex-col items-center justify-center group/img">
             <img

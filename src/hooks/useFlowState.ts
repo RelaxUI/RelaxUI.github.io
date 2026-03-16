@@ -1,3 +1,4 @@
+import { getDefaultDevice } from "@/config/defaults.ts";
 import { NODE_DIMENSIONS } from "@/config/nodeDimensions.ts";
 import { PREBUILT_MACROS } from "@/macros/macroFactory.ts";
 import type { FlowNode } from "@/types.ts";
@@ -244,7 +245,7 @@ export function useFlowState() {
                 ? "text-classification"
                 : undefined,
             model_id: "",
-            device: "wasm",
+            device: getDefaultDevice(),
             modelClass:
               type === "transformersModelLoader" ? "AutoModel" : undefined,
           },

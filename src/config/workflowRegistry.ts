@@ -1,3 +1,4 @@
+import { getDefaultDevice } from "@/config/defaults.ts";
 import { MODEL_CLASSES } from "@/config/modelClassRegistry.ts";
 import { PIPELINE_TASKS } from "@/config/pipelineRegistry.ts";
 import type { FlowNode } from "@/types.ts";
@@ -99,7 +100,7 @@ function createPipelineWorkflow(
     data: {
       task: taskKey,
       model_id: taskDef.defaultModel,
-      device: "wasm",
+      device: getDefaultDevice(),
       label: taskDef.label,
     },
   });
@@ -994,7 +995,7 @@ function createBatchPipelineWorkflow(
     data: {
       task: taskKey,
       model_id: taskDef.defaultModel,
-      device: "wasm",
+      device: getDefaultDevice(),
       label: taskDef.label,
     },
   });
@@ -1173,7 +1174,7 @@ function createClassWorkflow(cfg: ClassWorkflowCfg): {
       label: classDef.label,
       modelClass: cfg.modelClass,
       model_id: cfg.modelId,
-      device: cfg.device || "wasm",
+      device: cfg.device || getDefaultDevice(),
       dtype: cfg.dtype,
     },
   });
@@ -1291,109 +1292,204 @@ function createClassWorkflow(cfg: ClassWorkflowCfg): {
     tensorsSourceHandle = inputSourceHandle;
   }
 
-  // ── Row 3: Generate ──
-  const generateNodeId = generateId("n");
-  nodes.push({
-    id: generateNodeId,
-    type: "transformersGenerate",
-    position: { x: 850, y: 150 },
-    macroId: null,
-    data: {
-      label: "Generate",
-      useStreamer: cfg.useStreamer ?? true,
-      max_new_tokens: cfg.maxNewTokens ?? 128,
-      ...(cfg.doSample !== undefined ? { do_sample: cfg.doSample } : {}),
-    },
-  });
+  const canGenerate = classDef.executionModes.includes("generate");
 
-  edges.push({
-    id: generateId("e"),
-    source: modelLoaderId,
-    sourceHandle: "model",
-    target: generateNodeId,
-    targetHandle: "model",
-  });
-  edges.push({
-    id: generateId("e"),
-    source: tensorsSourceId,
-    sourceHandle: tensorsSourceHandle,
-    target: generateNodeId,
-    targetHandle: "tensors",
-  });
-
-  // Wire tokenizer to generate for streaming
-  if (tokenizerId && cfg.useStreamer !== false) {
-    edges.push({
-      id: generateId("e"),
-      source: tokenizerId,
-      sourceHandle: "tokenizer",
-      target: generateNodeId,
-      targetHandle: "tokenizer",
-    });
-  }
-
-  // ── Row 4: Decode + Outputs ──
-  const decoderTokenizerId = tokenizerId || processorId;
-
-  if (decoderTokenizerId) {
-    const decodeId = generateId("n");
+  if (canGenerate) {
+    // ── Row 3: Generate ──
+    const generateNodeId = generateId("n");
     nodes.push({
-      id: decodeId,
-      type: "transformersTokenizerDecode",
-      position: { x: 1100, y: 250 },
+      id: generateNodeId,
+      type: "transformersGenerate",
+      position: { x: 850, y: 150 },
       macroId: null,
-      data: { label: "Decode", skip_special_tokens: true },
+      data: {
+        label: "Generate",
+        useStreamer: cfg.useStreamer ?? true,
+        max_new_tokens: cfg.maxNewTokens ?? 128,
+        ...(cfg.doSample !== undefined ? { do_sample: cfg.doSample } : {}),
+      },
+    });
+
+    edges.push({
+      id: generateId("e"),
+      source: modelLoaderId,
+      sourceHandle: "model",
+      target: generateNodeId,
+      targetHandle: "model",
     });
     edges.push({
       id: generateId("e"),
-      source: generateNodeId,
-      sourceHandle: "generated_ids",
-      target: decodeId,
-      targetHandle: "token_ids",
+      source: tensorsSourceId,
+      sourceHandle: tensorsSourceHandle,
+      target: generateNodeId,
+      targetHandle: "tensors",
     });
-    // Decode needs a tokenizer — only wire if we actually have one
+
+    // Wire tokenizer to generate for streaming
+    if (tokenizerId && cfg.useStreamer !== false) {
+      edges.push({
+        id: generateId("e"),
+        source: tokenizerId,
+        sourceHandle: "tokenizer",
+        target: generateNodeId,
+        targetHandle: "tokenizer",
+      });
+    }
+
+    // ── Row 4: Decode + Outputs ──
+    const decoderTokenizerId = tokenizerId || processorId;
+
+    if (decoderTokenizerId) {
+      const decodeId = generateId("n");
+      nodes.push({
+        id: decodeId,
+        type: "transformersTokenizerDecode",
+        position: { x: 1100, y: 250 },
+        macroId: null,
+        data: { label: "Decode", skip_special_tokens: true },
+      });
+      edges.push({
+        id: generateId("e"),
+        source: generateNodeId,
+        sourceHandle: "generated_ids",
+        target: decodeId,
+        targetHandle: "token_ids",
+      });
+      if (tokenizerId) {
+        edges.push({
+          id: generateId("e"),
+          source: tokenizerId,
+          sourceHandle: "tokenizer",
+          target: decodeId,
+          targetHandle: "tokenizer",
+        });
+      }
+
+      const textOutId = generateId("n");
+      nodes.push({
+        id: textOutId,
+        type: "outputText",
+        position: { x: 1350, y: 250 },
+        macroId: null,
+        data: { label: "Decoded Text" },
+      });
+      edges.push({
+        id: generateId("e"),
+        source: decodeId,
+        sourceHandle: "text",
+        target: textOutId,
+        targetHandle: "in",
+      });
+    }
+
+    // Stream output
+    if (cfg.useStreamer !== false && tokenizerId) {
+      const streamOutId = generateId("n");
+      nodes.push({
+        id: streamOutId,
+        type: "outputText",
+        position: { x: 1350, y: 50 },
+        macroId: null,
+        data: { label: "Stream" },
+      });
+      edges.push({
+        id: generateId("e"),
+        source: generateNodeId,
+        sourceHandle: "stream",
+        target: streamOutId,
+        targetHandle: "in",
+      });
+    }
+  } else {
+    // ── Call-only topology: encode → modelCall → postProcess → output ──
+    const modelCallId = generateId("n");
+    nodes.push({
+      id: modelCallId,
+      type: "transformersModelCall",
+      position: { x: 850, y: 150 },
+      macroId: null,
+      data: { label: "Model Call" },
+    });
+
+    edges.push({
+      id: generateId("e"),
+      source: modelLoaderId,
+      sourceHandle: "model",
+      target: modelCallId,
+      targetHandle: "model",
+    });
+    edges.push({
+      id: generateId("e"),
+      source: tensorsSourceId,
+      sourceHandle: tensorsSourceHandle,
+      target: modelCallId,
+      targetHandle: "tensors",
+    });
+
+    // Post-Process node
+    const postProcessId = generateId("n");
+    nodes.push({
+      id: postProcessId,
+      type: "transformersPostProcessCall",
+      position: { x: 1100, y: 150 },
+      macroId: null,
+      data: {
+        label: "Post-Process",
+        postProcessCategory: classDef.postProcessCategory || "base",
+      },
+    });
+
+    edges.push({
+      id: generateId("e"),
+      source: modelCallId,
+      sourceHandle: "outputs",
+      target: postProcessId,
+      targetHandle: "outputs",
+    });
+
+    // Wire tokenizer/processor to post-process for decoding
     if (tokenizerId) {
       edges.push({
         id: generateId("e"),
         source: tokenizerId,
         sourceHandle: "tokenizer",
-        target: decodeId,
+        target: postProcessId,
         targetHandle: "tokenizer",
       });
     }
+    if (processorId) {
+      edges.push({
+        id: generateId("e"),
+        source: processorId,
+        sourceHandle: "processor",
+        target: postProcessId,
+        targetHandle: "processor",
+      });
+    }
 
-    const textOutId = generateId("n");
+    // Wire encoded inputs to post-process (for context like input_ids)
+    edges.push({
+      id: generateId("e"),
+      source: tensorsSourceId,
+      sourceHandle: tensorsSourceHandle,
+      target: postProcessId,
+      targetHandle: "encoded_inputs",
+    });
+
+    // Output node
+    const resultOutId = generateId("n");
     nodes.push({
-      id: textOutId,
+      id: resultOutId,
       type: "outputText",
-      position: { x: 1350, y: 250 },
+      position: { x: 1350, y: 150 },
       macroId: null,
-      data: { label: "Decoded Text" },
+      data: { label: "Result" },
     });
     edges.push({
       id: generateId("e"),
-      source: decodeId,
-      sourceHandle: "text",
-      target: textOutId,
-      targetHandle: "in",
-    });
-  }
-
-  // Stream output
-  if (cfg.useStreamer !== false && tokenizerId) {
-    const streamOutId = generateId("n");
-    nodes.push({
-      id: streamOutId,
-      type: "outputText",
-      position: { x: 1350, y: 50 },
-      macroId: null,
-      data: { label: "Stream" },
-    });
-    edges.push({
-      id: generateId("e"),
-      source: generateNodeId,
-      sourceHandle: "stream",
-      target: streamOutId,
+      source: postProcessId,
+      sourceHandle: "result",
+      target: resultOutId,
       targetHandle: "in",
     });
   }
@@ -1454,9 +1550,9 @@ const CLASS_WORKFLOWS: RegistryWorkflow[] = [
     id: "class-masked-lm",
     name: "Masked LM (BERT)",
     description:
-      "Predict masked tokens with AutoModelForMaskedLM — uses generate to fill [MASK] positions",
+      "Forward pass to predict [MASK] positions with AutoModelForMaskedLM",
     category: "Model Class: Text",
-    tags: ["generate", "MLM", "BERT"],
+    tags: ["call", "MLM", "BERT"],
     defaultModel: "Xenova/bert-base-uncased",
     create: () =>
       createClassWorkflow({
@@ -1464,8 +1560,6 @@ const CLASS_WORKFLOWS: RegistryWorkflow[] = [
         modelId: "Xenova/bert-base-uncased",
         useProcessor: false,
         useTokenizer: true,
-        useStreamer: false,
-        maxNewTokens: 16,
         input: {
           type: "inputText",
           value: "The capital of France is [MASK].",
@@ -1588,6 +1682,265 @@ const CLASS_WORKFLOWS: RegistryWorkflow[] = [
           value: SAMPLE.imageUrl,
           label: "Input Image",
           processorHandle: "image",
+        },
+      }),
+  },
+  // ── Call-only Model Class Workflows ──
+  {
+    id: "class-base-model",
+    name: "Base Model (Feature Extraction)",
+    description:
+      "Extract raw hidden states with AutoModel — general-purpose feature extractor",
+    category: "Model Class: Text",
+    tags: ["call", "features", "embeddings"],
+    defaultModel: "Xenova/bert-base-uncased",
+    create: () =>
+      createClassWorkflow({
+        modelClass: "AutoModel",
+        modelId: "Xenova/bert-base-uncased",
+        useProcessor: false,
+        useTokenizer: true,
+        input: {
+          type: "inputText",
+          value: "The quick brown fox jumps over the lazy dog.",
+          label: "Input Text",
+        },
+      }),
+  },
+  {
+    id: "class-sequence-classification",
+    name: "Sequence Classification",
+    description:
+      "Classify text sequences into labels with AutoModelForSequenceClassification",
+    category: "Model Class: Text",
+    tags: ["call", "classification", "sentiment"],
+    defaultModel: "Xenova/distilbert-base-uncased-finetuned-sst-2-english",
+    create: () =>
+      createClassWorkflow({
+        modelClass: "AutoModelForSequenceClassification",
+        modelId: "Xenova/distilbert-base-uncased-finetuned-sst-2-english",
+        useProcessor: false,
+        useTokenizer: true,
+        input: {
+          type: "inputText",
+          value: "I love this product! It's amazing and works perfectly.",
+          label: "Text to Classify",
+        },
+      }),
+  },
+  {
+    id: "class-token-classification",
+    name: "Token Classification (NER)",
+    description:
+      "Per-token classification for NER and POS tagging with AutoModelForTokenClassification",
+    category: "Model Class: Text",
+    tags: ["call", "NER", "tokens"],
+    defaultModel: "Xenova/bert-base-NER",
+    create: () =>
+      createClassWorkflow({
+        modelClass: "AutoModelForTokenClassification",
+        modelId: "Xenova/bert-base-NER",
+        useProcessor: false,
+        useTokenizer: true,
+        input: {
+          type: "inputText",
+          value: "John Smith works at Microsoft in Seattle, Washington.",
+          label: "Text for NER",
+        },
+      }),
+  },
+  {
+    id: "class-question-answering",
+    name: "Question Answering",
+    description:
+      "Extractive question answering with AutoModelForQuestionAnswering",
+    category: "Model Class: Text",
+    tags: ["call", "QA", "extractive"],
+    defaultModel: "Xenova/distilbert-base-cased-distilled-squad",
+    create: () =>
+      createClassWorkflow({
+        modelClass: "AutoModelForQuestionAnswering",
+        modelId: "Xenova/distilbert-base-cased-distilled-squad",
+        useProcessor: false,
+        useTokenizer: true,
+        input: {
+          type: "inputText",
+          value: "What is the capital of France? [SEP] France is a country in Western Europe. Its capital is Paris.",
+          label: "Question [SEP] Context",
+        },
+      }),
+  },
+  {
+    id: "class-image-classification",
+    name: "Image Classification (ViT)",
+    description:
+      "Classify images into categories with AutoModelForImageClassification",
+    category: "Model Class: Vision",
+    tags: ["call", "classification", "ViT"],
+    defaultModel: "Xenova/vit-base-patch16-224",
+    create: () =>
+      createClassWorkflow({
+        modelClass: "AutoModelForImageClassification",
+        modelId: "Xenova/vit-base-patch16-224",
+        useProcessor: true,
+        useTokenizer: false,
+        processorInput: "image",
+        input: {
+          type: "inputImage",
+          value: SAMPLE.imageUrl,
+          label: "Input Image",
+        },
+      }),
+  },
+  {
+    id: "class-object-detection",
+    name: "Object Detection (DETR)",
+    description:
+      "Detect objects with bounding boxes using AutoModelForObjectDetection",
+    category: "Model Class: Vision",
+    tags: ["call", "detection", "DETR"],
+    defaultModel: "Xenova/detr-resnet-50",
+    create: () =>
+      createClassWorkflow({
+        modelClass: "AutoModelForObjectDetection",
+        modelId: "Xenova/detr-resnet-50",
+        useProcessor: true,
+        useTokenizer: false,
+        processorInput: "image",
+        input: {
+          type: "inputImage",
+          value: SAMPLE.imageUrl,
+          label: "Input Image",
+        },
+      }),
+  },
+  {
+    id: "class-image-segmentation",
+    name: "Image Segmentation",
+    description:
+      "Instance/panoptic segmentation with AutoModelForImageSegmentation",
+    category: "Model Class: Vision",
+    tags: ["call", "segmentation", "panoptic"],
+    defaultModel: "Xenova/detr-resnet-50-panoptic",
+    create: () =>
+      createClassWorkflow({
+        modelClass: "AutoModelForImageSegmentation",
+        modelId: "Xenova/detr-resnet-50-panoptic",
+        useProcessor: true,
+        useTokenizer: false,
+        processorInput: "image",
+        input: {
+          type: "inputImage",
+          value: SAMPLE.imageUrl,
+          label: "Input Image",
+        },
+      }),
+  },
+  {
+    id: "class-semantic-segmentation",
+    name: "Semantic Segmentation",
+    description:
+      "Per-pixel class labels with AutoModelForSemanticSegmentation",
+    category: "Model Class: Vision",
+    tags: ["call", "segmentation", "semantic"],
+    defaultModel: "Xenova/segformer-b0-finetuned-ade-512-512",
+    create: () =>
+      createClassWorkflow({
+        modelClass: "AutoModelForSemanticSegmentation",
+        modelId: "Xenova/segformer-b0-finetuned-ade-512-512",
+        useProcessor: true,
+        useTokenizer: false,
+        processorInput: "image",
+        input: {
+          type: "inputImage",
+          value: SAMPLE.imageUrl,
+          label: "Input Image",
+        },
+      }),
+  },
+  {
+    id: "class-universal-segmentation",
+    name: "Universal Segmentation",
+    description:
+      "Panoptic, instance, and semantic segmentation with AutoModelForUniversalSegmentation",
+    category: "Model Class: Vision",
+    tags: ["call", "segmentation", "universal"],
+    defaultModel: "onnx-community/maskformer-swin-small-ade",
+    create: () =>
+      createClassWorkflow({
+        modelClass: "AutoModelForUniversalSegmentation",
+        modelId: "onnx-community/maskformer-swin-small-ade",
+        useProcessor: true,
+        useTokenizer: false,
+        processorInput: "image",
+        input: {
+          type: "inputImage",
+          value: SAMPLE.imageUrl,
+          label: "Input Image",
+        },
+      }),
+  },
+  {
+    id: "class-mask-generation",
+    name: "Mask Generation (SAM)",
+    description:
+      "Prompt-based segmentation mask generation with AutoModelForMaskGeneration",
+    category: "Model Class: Vision",
+    tags: ["call", "SAM", "masks"],
+    defaultModel: "Xenova/slimsam-77-uniform",
+    create: () =>
+      createClassWorkflow({
+        modelClass: "AutoModelForMaskGeneration",
+        modelId: "Xenova/slimsam-77-uniform",
+        useProcessor: true,
+        useTokenizer: false,
+        processorInput: "image",
+        input: {
+          type: "inputImage",
+          value: SAMPLE.imageUrl,
+          label: "Input Image",
+        },
+      }),
+  },
+  {
+    id: "class-text-to-spectrogram",
+    name: "TTS Spectrogram (SpeechT5)",
+    description:
+      "Generate speech from text with AutoModelForTextToSpectrogram — requires speaker embeddings and vocoder (use text-to-speech pipeline for easier setup)",
+    category: "Model Class: Audio",
+    tags: ["call", "TTS", "SpeechT5"],
+    defaultModel: "Xenova/speecht5_tts",
+    create: () =>
+      createClassWorkflow({
+        modelClass: "AutoModelForTextToSpectrogram",
+        modelId: "Xenova/speecht5_tts",
+        useProcessor: false,
+        useTokenizer: true,
+        input: {
+          type: "inputText",
+          value: "Hello, this is a test of the text to speech system.",
+          label: "Text Input",
+        },
+      }),
+  },
+  {
+    id: "class-text-to-waveform",
+    name: "TTS Waveform (MMS)",
+    description:
+      "End-to-end text-to-waveform synthesis with AutoModelForTextToWaveform",
+    category: "Model Class: Audio",
+    tags: ["call", "TTS", "waveform"],
+    defaultModel: "Xenova/mms-tts-eng",
+    create: () =>
+      createClassWorkflow({
+        modelClass: "AutoModelForTextToWaveform",
+        modelId: "Xenova/mms-tts-eng",
+        useProcessor: false,
+        useTokenizer: true,
+        input: {
+          type: "inputText",
+          value: "Hello, this is a test of the text to speech system.",
+          label: "Text Input",
         },
       }),
   },

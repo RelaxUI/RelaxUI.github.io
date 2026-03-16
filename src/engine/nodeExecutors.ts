@@ -1,3 +1,4 @@
+import { DEFAULTS } from "@/config/defaults.ts";
 import type { GraphRunner } from "@/engine/GraphRunner.ts";
 import {
   audioInputExecutor,
@@ -6,8 +7,10 @@ import {
   envConfigExecutor,
   generateExecutor,
   generationConfigExecutor,
+  modelCallExecutor,
   modelLoaderExecutor,
   pipelineExecutor,
+  postProcessCallExecutor,
   processorExecutor,
   processorLoaderExecutor,
   tokenizerDecodeExecutor,
@@ -150,6 +153,7 @@ const executors: Record<string, Executor> = {
   },
 
   jsonPath: (node, inputs, ctx, isStream) => {
+    if (!inputs.json) return;
     const resolve = (obj: any, p: string) =>
       p
         .replace(/\["?'?([^"']+)"?'?\]/g, ".$1")
@@ -176,8 +180,20 @@ const executors: Record<string, Executor> = {
     );
   },
 
-  olderInput: (node, inputs, ctx) => {
-    ctx.pushValue(node.id, "out", node.data.value || []);
+  folderInput: (node, _inputs, ctx) => {
+    const files = node.data.value || [];
+    ctx.pushValue(node.id, "out", files);
+
+    // Category-filtered outputs
+    const meta: any[] = node.data.fileMeta || [];
+    const images = meta.filter((f: any) => f.category === "image").map((f: any) => f.url);
+    const audio = meta.filter((f: any) => f.category === "audio").map((f: any) => f.url);
+    const text = meta.filter((f: any) => f.category === "text").map((f: any) => f.url);
+    const video = meta.filter((f: any) => f.category === "video").map((f: any) => f.url);
+    if (images.length > 0) ctx.pushValue(node.id, "images", images);
+    if (audio.length > 0) ctx.pushValue(node.id, "audio", audio);
+    if (text.length > 0) ctx.pushValue(node.id, "text", text);
+    if (video.length > 0) ctx.pushValue(node.id, "video", video);
   },
 
   batchIterator: async (node, inputs, ctx, isStream) => {
@@ -191,7 +207,7 @@ const executors: Record<string, Executor> = {
     }
     if (!Array.isArray(list)) return;
     const batchSize = node.data.batchSize || 1;
-    const delayMs = node.data.delayMs ?? 1000;
+    const delayMs = node.data.delayMs ?? DEFAULTS.batchDelayMs;
 
     for (let i = 0; i < list.length; i += batchSize) {
       if (!ctx.isRunning) break;
@@ -218,7 +234,7 @@ const executors: Record<string, Executor> = {
   },
 
   delay: async (node, inputs, ctx, isStream) => {
-    const delayMs = node.data.delayMs ?? 1000;
+    const delayMs = node.data.delayMs ?? DEFAULTS.batchDelayMs;
     await new Promise((r) => setTimeout(r, delayMs));
     ctx.pushValue(node.id, "out", inputs.in, isStream);
   },
@@ -256,6 +272,11 @@ const executors: Record<string, Executor> = {
   transformersGenerationConfig: generationConfigExecutor,
   audioInput: audioInputExecutor,
   audioOutput: audioOutputExecutor,
+  videoInput: (node: FlowNode, _inputs: Record<string, any>, ctx: GraphRunner) => {
+    ctx.pushValue(node.id, "video", node.data.value);
+  },
+  transformersModelCall: modelCallExecutor,
+  transformersPostProcessCall: postProcessCallExecutor,
 };
 
 export async function executeNode(

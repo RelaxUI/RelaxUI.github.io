@@ -1,12 +1,14 @@
 {
   "name": "relaxui",
-  "version": "0.2.0",
+  "version": "0.3.0",
   "private": true,
   "type": "module",
   "scripts": {
     "dev": "bun --hot src/index.ts",
     "start": "NODE_ENV=production bun src/index.ts",
-    "build": "bun run build.ts"
+    "build": "bun run build.ts",
+    "test:sizes": "bun run tests/check-model-sizes.ts",
+    "test:models": "bun run tests/model-test-runner.ts"
   },
   "dependencies": {
     "@huggingface/transformers": "^4.0.0-next.6",

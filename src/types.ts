@@ -44,7 +44,7 @@ export interface FlowNode extends Node {
 export interface PipelineInput {
   id: string;
   label: string;
-  type: "string" | "image" | "audio" | "array" | "json" | "boolean" | "number";
+  type: "string" | "image" | "audio" | "video" | "array" | "json" | "boolean" | "number";
   required?: boolean;
 }
 
@@ -88,6 +88,7 @@ export interface ModelClassDef {
   companionLoaders: ("AutoTokenizer" | "AutoProcessor")[];
   requiresProcessor?: boolean;
   suggestedDtype?: Record<string, string>;
+  postProcessCategory?: string;
 }
 
 export interface ParamSchema {

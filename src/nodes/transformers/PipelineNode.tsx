@@ -1,6 +1,7 @@
 import { ModelLoadingIndicator } from "@/components/ModelLoadingIndicator.tsx";
 import { ModelSizeBadge } from "@/components/ModelSizeBadge.tsx";
-import { DEVICE_OPTIONS, DTYPE_OPTIONS } from "@/config/generationDefaults.ts";
+import { getDefaultDevice } from "@/config/defaults.ts";
+import { DEVICE_OPTIONS } from "@/config/generationDefaults.ts";
 import {
   PIPELINE_CATEGORIES,
   PIPELINE_TASKS,
@@ -16,21 +17,26 @@ export const PipelineNode = (props: any) => {
   const updateNodeInternals = useUpdateNodeInternals();
   const task = props.data.task || "text-classification";
   const [modelSize, setModelSize] = useState<number | null>(null);
+  const [availableDtypes, setAvailableDtypes] = useState<string[]>([]);
 
   useEffect(() => {
     updateNodeInternals(props.id);
   }, [task, props.id, updateNodeInternals]);
 
   useEffect(() => {
-    const fetchSize = async () => {
-      const size = await ModelRegistry.get_model_size(
-        props.data.model_id,
-        props.data.dtype,
-      );
+    const fetchInfo = async () => {
+      const [size, dtypes] = await Promise.all([
+        ModelRegistry.get_model_size(props.data.model_id, props.data.dtype),
+        ModelRegistry.get_available_dtypes(props.data.model_id),
+      ]);
       setModelSize(size);
+      setAvailableDtypes(dtypes);
     };
-    if (props.data.model_id) fetchSize();
-    else setModelSize(null);
+    if (props.data.model_id) fetchInfo();
+    else {
+      setModelSize(null);
+      setAvailableDtypes([]);
+    }
   }, [props.data.model_id, props.data.dtype]);
 
   return (
@@ -84,7 +90,7 @@ export const PipelineNode = (props: any) => {
               DEVICE
             </label>
             <select
-              value={props.data.device || "wasm"}
+              value={props.data.device || getDefaultDevice()}
               onChange={(e) =>
                 updateNodeData(props.id, "device", e.target.value)
               }
@@ -109,7 +115,7 @@ export const PipelineNode = (props: any) => {
               className="w-full bg-[#0b0e14]/60 border border-[#1f2630] rounded px-2 py-1 text-xs font-mono text-white focus:outline-none focus:border-[#00e5ff]"
             >
               <option value="">auto</option>
-              {DTYPE_OPTIONS.map((d) => (
+              {availableDtypes.map((d) => (
                 <option key={d} value={d}>
                   {d}
                 </option>

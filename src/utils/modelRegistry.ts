@@ -1,22 +1,94 @@
+/** Regex matching any known dtype suffix before .onnx in a filename. */
+const DTYPE_SUFFIX_RE =
+  /_(quantized|q4f16|q4|q8|fp16|fp32|int8|uint8|bnb4)\.onnx/;
+
 /**
- * Prefer merged model variants over non-merged when both exist.
- * E.g. decoder_model_merged_quantized.onnx subsumes decoder_model_quantized.onnx
+ * Map ONNX filename suffixes to the dtype values transformers.js expects.
+ * Only entries that differ are listed — all others map 1:1.
+ * (transformers.js internally maps "q8" → "_quantized" file suffix)
+ */
+const SUFFIX_TO_DTYPE: Record<string, string> = {
+  quantized: "q8",
+};
+
+/** Simple in-memory cache for HuggingFace file-tree responses. */
+const _treeCache = new Map<string, { data: any[]; ts: number }>();
+const _TREE_TTL = 5 * 60_000;
+
+/**
+ * Prefer merged model variants over non-merged when both exist,
+ * but only within the same component prefix (e.g. decoder_model, encoder_model).
  */
 function deduplicateMerged(
   files: { path: string; size: number }[],
 ): { path: string; size: number }[] {
-  const merged = files.filter((f) => f.path.includes("_merged"));
-  const nonMerged = files.filter((f) => !f.path.includes("_merged"));
-  if (merged.length > 0 && nonMerged.length > 0) {
-    return merged;
+  // Group files by component prefix
+  const groups = new Map<string, { path: string; size: number }[]>();
+  for (const f of files) {
+    const basename = f.path.split("/").pop() || "";
+    // Extract component prefix: e.g. "decoder_model" from "decoder_model_merged_quantized.onnx"
+    const match = basename.match(
+      /^([a-z_]+?)(?:_merged)?(?:_quantized|_q4f16|_q4|_q8|_fp16|_fp32|_int8|_uint8|_bnb4)?\.onnx/,
+    );
+    const prefix = match?.[1] || basename;
+    if (!groups.has(prefix)) groups.set(prefix, []);
+    groups.get(prefix)!.push(f);
   }
-  return files;
+
+  const result: { path: string; size: number }[] = [];
+  for (const group of groups.values()) {
+    const merged = group.filter((f) => f.path.includes("_merged"));
+    const nonMerged = group.filter((f) => !f.path.includes("_merged"));
+    // Only deduplicate if both merged and non-merged exist for this component
+    if (merged.length > 0 && nonMerged.length > 0) {
+      result.push(...merged);
+    } else {
+      result.push(...group);
+    }
+  }
+  return result;
 }
 
 export class ModelRegistry {
+  /** Cached fetch of the HuggingFace file tree for a model. */
+  private static async _fetchTree(modelId: string): Promise<any[] | null> {
+    const cached = _treeCache.get(modelId);
+    if (cached && Date.now() - cached.ts < _TREE_TTL) return cached.data;
+    const res = await fetch(
+      `https://huggingface.co/api/models/${modelId}/tree/main?recursive=true`,
+    );
+    if (!res.ok) return null;
+    const data = await res.json();
+    _treeCache.set(modelId, { data, ts: Date.now() });
+    return data;
+  }
+
+  /**
+   * Returns the transformers.js dtype values available for a model,
+   * derived from its actual ONNX filenames.
+   * E.g. ["fp16", "q4", "q4f16", "q8", "int8", "uint8", "bnb4"]
+   */
+  static async get_available_dtypes(modelId: string): Promise<string[]> {
+    if (!modelId) return [];
+    try {
+      const files = await ModelRegistry._fetchTree(modelId);
+      if (!files) return [];
+      const dtypes = new Set<string>();
+      for (const f of files) {
+        if (f.type !== "file" || !f.path.endsWith(".onnx")) continue;
+        const basename = f.path.split("/").pop() || "";
+        const match = basename.match(DTYPE_SUFFIX_RE);
+        if (match) dtypes.add(SUFFIX_TO_DTYPE[match[1]] ?? match[1]);
+      }
+      return Array.from(dtypes);
+    } catch {
+      return [];
+    }
+  }
+
   /**
    * Fetches the estimated size of a model from the Hugging Face API.
-   * Scans the file tree and applies basic dtype heuristics.
+   * Scans the file tree and applies dtype-based file selection.
    */
   static async get_model_size(
     modelId: string,
@@ -24,24 +96,35 @@ export class ModelRegistry {
   ): Promise<number | null> {
     if (!modelId) return null;
     try {
-      const res = await fetch(
-        `https://huggingface.co/api/models/${modelId}/tree/main?recursive=true`,
-      );
-      if (!res.ok) return null;
-      const files = await res.json();
+      const files = await ModelRegistry._fetchTree(modelId);
+      if (!files) return null;
 
       const dtypeStr = typeof dtype === "string" ? dtype : "";
 
-      // Collect all ONNX weight files grouped by variant
+      // Only count root-level config files (not deep subdirectory configs)
       const configSize = files
         .filter(
           (f: any) =>
             f.type === "file" &&
             f.size &&
-            (f.path.endsWith(".json") || f.path.endsWith(".txt")),
+            (f.path.endsWith(".json") || f.path.endsWith(".txt")) &&
+            (!f.path.includes("/") || f.path.split("/").length <= 2),
         )
-        .reduce((a: number, b: any) => a + b.size, 0);
+        .reduce((a: number, b: any) => a + (b.size || 0), 0);
 
+      // Include tokenizer/processor binary files in size
+      const tokenizerSize = files
+        .filter(
+          (f: any) =>
+            f.type === "file" &&
+            f.size &&
+            (f.path.endsWith(".model") ||
+              f.path === "tokenizer.json" ||
+              f.path === "vocab.txt"),
+        )
+        .reduce((a: number, b: any) => a + (b.size || 0), 0);
+
+      // Collect all ONNX weight files, including onnx/ subdirectory
       const onnxFiles: { path: string; size: number }[] = files.filter(
         (f: any) =>
           f.type === "file" &&
@@ -49,57 +132,83 @@ export class ModelRegistry {
           (f.path.endsWith(".onnx") || f.path.endsWith(".onnx_data")),
       );
 
-      if (onnxFiles.length === 0) return configSize > 0 ? configSize : null;
+      const baseSize = configSize + tokenizerSize;
 
-      // Dtype matching priority:
-      // 1. Exact dtype in filename (e.g. "q4", "fp16", "q8")
-      // 2. "quantized" variant for q4/q8 dtypes
-      // 3. Plain "model.onnx" (no qualifier) for fp32/auto
-      // 4. Smallest ONNX file as final fallback
+      if (onnxFiles.length === 0) return baseSize > 0 ? baseSize : null;
+
+      // Dtype matching: try exact suffix, then aliases, then plain fallback.
+      // "__plain__" is a sentinel that matches files WITHOUT any dtype suffix.
       const dtypeAliases: Record<string, string[]> = {
-        q4: ["q4", "quantized", "int8"],
-        q8: ["q8", "quantized", "int8"],
+        q4: ["q4", "quantized"],
+        q8: ["q8", "quantized"],
         fp16: ["fp16"],
-        fp32: ["fp32", "model.onnx"],
-        "": [],
+        fp32: ["fp32", "__plain__"],
+        "": ["__plain__"],
       };
       const aliases = dtypeAliases[dtypeStr] ?? [dtypeStr];
 
       // Try each alias in order
       for (const alias of aliases) {
         let matched = onnxFiles.filter((f) => {
-          if (alias === "model.onnx") return f.path.endsWith("/model.onnx");
-          return f.path.includes(alias);
+          const basename = f.path.split("/").pop() || "";
+          if (alias === "__plain__") return !DTYPE_SUFFIX_RE.test(basename);
+          return basename.includes(`_${alias}.onnx`);
         });
         if (matched.length > 0) {
           matched = deduplicateMerged(matched);
-          return configSize + matched.reduce((a, b) => a + b.size, 0);
+          return baseSize + matched.reduce((a, b) => a + b.size, 0);
         }
       }
 
       // No alias matched — pick the best default:
-      // prefer "quantized" variant, then plain model.onnx, then smallest
-      let quantized = onnxFiles.filter((f) =>
-        f.path.includes("quantized"),
+      // Only use "quantized" fallback when all components have quantized variants
+      const quantized = onnxFiles.filter((f) =>
+        f.path.includes("_quantized.onnx"),
       );
+      const nonQuantized = onnxFiles.filter((f) => {
+        const basename = f.path.split("/").pop() || "";
+        return !DTYPE_SUFFIX_RE.test(basename);
+      });
+
+      // Check if quantized covers all components
       if (quantized.length > 0) {
-        quantized = deduplicateMerged(quantized);
-        return configSize + quantized.reduce((a, b) => a + b.size, 0);
+        const dedupedQuantized = deduplicateMerged(quantized);
+        const quantizedPrefixes = new Set(
+          dedupedQuantized.map((f) => {
+            const basename = f.path.split("/").pop() || "";
+            return basename
+              .replace(/_quantized|_merged/g, "")
+              .replace(/\.onnx.*/, "");
+          }),
+        );
+        const missingNonQuantized = nonQuantized.filter((f) => {
+          const basename = f.path.split("/").pop() || "";
+          const prefix = basename
+            .replace(
+              /_(?:merged|quantized|q4f16|q4|q8|fp16|fp32|int8|uint8|bnb4)/g,
+              "",
+            )
+            .replace(/\.onnx.*/, "");
+          return !quantizedPrefixes.has(prefix);
+        });
+        return (
+          baseSize +
+          dedupedQuantized.reduce((a, b) => a + b.size, 0) +
+          missingNonQuantized.reduce((a, b) => a + b.size, 0)
+        );
       }
 
-      const plain = onnxFiles.filter((f) =>
-        f.path.endsWith("/model.onnx"),
-      );
-      if (plain.length > 0)
-        return (
-          configSize + plain.reduce((a, b) => a + b.size, 0)
-        );
+      const plain = nonQuantized.length > 0 ? nonQuantized : onnxFiles;
+      if (plain.length > 0) {
+        const deduped = deduplicateMerged(plain);
+        return baseSize + deduped.reduce((a, b) => a + b.size, 0);
+      }
 
       // Absolute fallback: smallest ONNX file
       const smallest = onnxFiles.reduce((a, b) =>
         a.size < b.size ? a : b,
       );
-      return configSize + smallest.size;
+      return baseSize + smallest.size;
     } catch {
       return null;
     }

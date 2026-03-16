@@ -1,3 +1,4 @@
+import { getDefaultDevice } from "@/config/defaults.ts";
 import { PIPELINE_TASKS } from "@/config/pipelineRegistry.ts";
 import type { FlowNode, MacroDefinition } from "@/types.ts";
 import { generateId } from "@/utils/generateId.ts";
@@ -71,7 +72,7 @@ function createPipelineMacro(taskName: string): MacroDefinition {
         data: {
           task: taskName,
           model_id: "",
-          device: "wasm",
+          device: getDefaultDevice(),
         },
       });
 

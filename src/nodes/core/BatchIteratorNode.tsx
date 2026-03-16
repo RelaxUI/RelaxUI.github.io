@@ -1,3 +1,4 @@
+import { DEFAULTS } from "@/config/defaults.ts";
 import { RuntimeContext } from "@/context/RuntimeContext.ts";
 import { BaseNode } from "@/nodes/BaseNode.tsx";
 import { useContext } from "react";
@@ -31,7 +32,7 @@ export const BatchIteratorNode = (props: any) => {
           <input
             type="number"
             min="0"
-            value={props.data.delayMs ?? 1000}
+            value={props.data.delayMs ?? DEFAULTS.batchDelayMs}
             onChange={(e) =>
               updateNodeData(props.id, "delayMs", parseInt(e.target.value))
             }

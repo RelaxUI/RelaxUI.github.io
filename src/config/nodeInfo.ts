@@ -62,9 +62,9 @@ export const NODE_INFO: Record<string, NodeInfo> = {
     out: "Array of Strings",
   },
   folderInput: {
-    desc: "Allows the user to select a local folder. Outputs an array of object URLs for all files.",
+    desc: "Allows the user to select a local folder. Outputs arrays of object URLs filtered by category (all, images, audio, text, video).",
     in: "None",
-    out: "Array of URLs",
+    out: "ALL FILES, IMAGES, AUDIO, TEXT, VIDEO",
   },
   batchIterator: {
     desc: "Takes an array and emits its items one by one (or in chunks) with a configurable delay. Great for looping through LLM calls.",
@@ -151,5 +151,20 @@ export const NODE_INFO: Record<string, NodeInfo> = {
     desc: "Plays back audio data.",
     in: "Audio data",
     out: "None",
+  },
+  videoInput: {
+    desc: "Provides video data from file upload or URL.",
+    in: "None",
+    out: "Video data",
+  },
+  transformersModelCall: {
+    desc: "Runs a forward pass (model call) on the model with tensor inputs. Use this for models that don't support .generate().",
+    in: "model, tensors",
+    out: "Raw model outputs",
+  },
+  transformersPostProcessCall: {
+    desc: "Post-processes raw model call outputs into human-readable results based on the model's task category.",
+    in: "outputs, tokenizer/processor, encoded_inputs",
+    out: "Processed result",
   },
 };

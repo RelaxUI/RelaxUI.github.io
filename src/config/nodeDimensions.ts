@@ -18,7 +18,7 @@ export const NODE_DIMENSIONS: Record<string, NodeDimension> = {
     title: "MACRO CONNS",
     sub: "active ports",
   },
-  folderInput: { w: 220, h: 140, title: "FOLDER INPUT", sub: "load directory" },
+  folderInput: { w: 220, h: 220, title: "FOLDER INPUT", sub: "load directory" },
   batchIterator: { w: 220, h: 160, title: "BATCH ITERATOR", sub: "loop items" },
   delay: { w: 220, h: 100, title: "DELAY", sub: "pause flow" },
   listAggregator: {
@@ -92,4 +92,17 @@ export const NODE_DIMENSIONS: Record<string, NodeDimension> = {
   },
   audioInput: { w: 220, h: 240, title: "AUDIO INPUT", sub: "audio data" },
   audioOutput: { w: 280, h: 180, title: "AUDIO OUTPUT", sub: "playback" },
+  videoInput: { w: 220, h: 240, title: "VIDEO INPUT", sub: "video data" },
+  transformersModelCall: {
+    w: 260,
+    h: 140,
+    title: "MODEL CALL",
+    sub: "forward pass",
+  },
+  transformersPostProcessCall: {
+    w: 280,
+    h: 200,
+    title: "POST-PROCESS",
+    sub: "call output",
+  },
 };

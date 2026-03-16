@@ -1,3 +1,4 @@
+import { getDefaultDevice } from "@/config/defaults.ts";
 import { MODEL_CLASSES } from "@/config/modelClassRegistry.ts";
 import type { FlowNode, MacroDefinition } from "@/types.ts";
 import { generateId } from "@/utils/generateId.ts";
@@ -56,7 +57,7 @@ function createModelClassMacro(className: string): MacroDefinition {
         data: {
           modelClass: className,
           model_id: "",
-          device: "wasm",
+          device: getDefaultDevice(),
           dtype: classDef.suggestedDtype || undefined,
         },
       });
@@ -212,36 +213,119 @@ function createModelClassMacro(className: string): MacroDefinition {
           targetHandle: "in",
         });
       } else {
-        // 6b. For "call" mode - just output the model
-        const modelOutId = generateId("n");
+        // 6b. For "call" mode — encode → modelCall → postProcess → macroOutput
+
+        // Encode node
+        const encodeId = generateId("n");
         nodes.push({
-          id: modelOutId,
-          type: "macroOutput",
+          id: encodeId,
+          type: isProcessor
+            ? "transformersProcessor"
+            : "transformersTokenizerEncode",
           macroId: mId,
-          position: { x: 700, y: yOut },
-          data: { param: "model" },
-        });
-        edges.push({
-          id: generateId("e"),
-          source: modelLoaderId,
-          sourceHandle: "model",
-          target: modelOutId,
-          targetHandle: "in",
+          position: { x: 350, y: 560 },
+          data: {},
         });
 
-        const compOutId = generateId("n");
-        nodes.push({
-          id: compOutId,
-          type: "macroOutput",
-          macroId: mId,
-          position: { x: 700, y: yOut + 140 },
-          data: { param: isProcessor ? "processor" : "tokenizer" },
+        // Wire text input → encode
+        edges.push({
+          id: generateId("e"),
+          source: textEdgeId,
+          sourceHandle: "out",
+          target: encodeId,
+          targetHandle: "text",
         });
+
+        // Wire companion → encode
         edges.push({
           id: generateId("e"),
           source: companionId,
           sourceHandle: isProcessor ? "processor" : "tokenizer",
-          target: compOutId,
+          target: encodeId,
+          targetHandle: isProcessor ? "processor" : "tokenizer",
+        });
+
+        // Model Call node
+        const modelCallId = generateId("n");
+        nodes.push({
+          id: modelCallId,
+          type: "transformersModelCall",
+          macroId: mId,
+          position: { x: 700, y: 120 },
+          data: {},
+        });
+
+        // Wire model → modelCall
+        edges.push({
+          id: generateId("e"),
+          source: modelLoaderId,
+          sourceHandle: "model",
+          target: modelCallId,
+          targetHandle: "model",
+        });
+
+        // Wire encode → modelCall
+        edges.push({
+          id: generateId("e"),
+          source: encodeId,
+          sourceHandle: "tensors",
+          target: modelCallId,
+          targetHandle: "tensors",
+        });
+
+        // Post-Process node
+        const postProcessId = generateId("n");
+        nodes.push({
+          id: postProcessId,
+          type: "transformersPostProcessCall",
+          macroId: mId,
+          position: { x: 1050, y: 120 },
+          data: {
+            postProcessCategory: classDef.postProcessCategory || "base",
+          },
+        });
+
+        // Wire modelCall outputs → postProcess
+        edges.push({
+          id: generateId("e"),
+          source: modelCallId,
+          sourceHandle: "outputs",
+          target: postProcessId,
+          targetHandle: "outputs",
+        });
+
+        // Wire companion → postProcess (for decoding)
+        edges.push({
+          id: generateId("e"),
+          source: companionId,
+          sourceHandle: isProcessor ? "processor" : "tokenizer",
+          target: postProcessId,
+          targetHandle: isProcessor ? "processor" : "tokenizer",
+        });
+
+        // Wire encode → postProcess (for input_ids context)
+        edges.push({
+          id: generateId("e"),
+          source: encodeId,
+          sourceHandle: "tensors",
+          target: postProcessId,
+          targetHandle: "encoded_inputs",
+        });
+
+        // Output: result
+        const resultOutId = generateId("n");
+        nodes.push({
+          id: resultOutId,
+          type: "macroOutput",
+          macroId: mId,
+          position: { x: 1350, y: 120 },
+          data: { param: "result" },
+        });
+        edges.push({
+          id: generateId("e"),
+          source: postProcessId,
+          sourceHandle: "result",
+          target: resultOutId,
           targetHandle: "in",
         });
       }

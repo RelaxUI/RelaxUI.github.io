@@ -1,3 +1,4 @@
+import { DEFAULTS } from "@/config/defaults.ts";
 import { GraphRunner } from "@/engine/GraphRunner.ts";
 import type { FlowNode, ModelLoadingStatus } from "@/types.ts";
 import type { Edge } from "@xyflow/react";
@@ -34,7 +35,7 @@ export function useGraphRunner() {
               n.delete(id);
               return n;
             }),
-          600,
+          DEFAULTS.edgeAnimationMs,
         ),
       });
       return next;

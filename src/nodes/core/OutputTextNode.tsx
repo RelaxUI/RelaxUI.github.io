@@ -29,11 +29,11 @@ export const OutputTextNode = (props: any) => {
 
   return (
     <BaseNode {...props}>
-      <div className="relative nowheel nodrag flex-1 w-full bg-[var(--relax-bg-primary)]/60 border border-[var(--relax-border)] rounded p-2 text-xs font-mono text-white overflow-y-auto whitespace-pre-wrap custom-scrollbar">
+      <div className="relative nowheel nodrag flex-1 w-full bg-(--relax-bg-primary)/60 border border-(--relax-border) rounded p-2 text-xs font-mono text-white overflow-y-auto whitespace-pre-wrap custom-scrollbar">
         {raw != null && (
           <button
             onClick={handleCopy}
-            className="absolute top-1 right-1 text-[9px] font-bold text-[var(--relax-text-muted)] hover:text-[var(--relax-accent)] bg-[var(--relax-bg-primary)]/80 border border-[var(--relax-border)] rounded px-1.5 py-0.5 z-10 transition-colors"
+            className="absolute bottom-1 right-1 text-[9px] font-bold text-(--relax-text-muted) hover:text-(--relax-accent) bg-(--relax-bg-primary)/80 border border-(--relax-border) rounded px-1.5 py-0.5 z-10 transition-colors"
             title="Copy to clipboard"
           >
             {copied ? "COPIED" : "COPY"}

@@ -21,6 +21,7 @@ export const MODEL_CLASSES: Record<string, ModelClassDef> = {
     callOutputs: ["last_hidden_state", "pooler_output"],
     companionLoaders: ["AutoTokenizer"],
     requiresProcessor: false,
+    postProcessCategory: "base",
   },
 
   /* ─── Text Generation ─────────────────────────────────────────────── */
@@ -58,6 +59,7 @@ export const MODEL_CLASSES: Record<string, ModelClassDef> = {
     callOutputs: ["logits"],
     companionLoaders: ["AutoTokenizer"],
     requiresProcessor: false,
+    postProcessCategory: "masked-lm",
   },
 
   /* ─── Classification ──────────────────────────────────────────────── */
@@ -71,6 +73,7 @@ export const MODEL_CLASSES: Record<string, ModelClassDef> = {
     callOutputs: ["logits"],
     companionLoaders: ["AutoTokenizer"],
     requiresProcessor: false,
+    postProcessCategory: "sequence-classification",
   },
 
   AutoModelForTokenClassification: {
@@ -82,6 +85,7 @@ export const MODEL_CLASSES: Record<string, ModelClassDef> = {
     callOutputs: ["logits"],
     companionLoaders: ["AutoTokenizer"],
     requiresProcessor: false,
+    postProcessCategory: "token-classification",
   },
 
   AutoModelForQuestionAnswering: {
@@ -93,6 +97,7 @@ export const MODEL_CLASSES: Record<string, ModelClassDef> = {
     callOutputs: ["start_logits", "end_logits"],
     companionLoaders: ["AutoTokenizer"],
     requiresProcessor: false,
+    postProcessCategory: "question-answering",
   },
 
   /* ─── Vision ──────────────────────────────────────────────────────── */
@@ -106,6 +111,7 @@ export const MODEL_CLASSES: Record<string, ModelClassDef> = {
     callOutputs: ["logits"],
     companionLoaders: ["AutoProcessor"],
     requiresProcessor: true,
+    postProcessCategory: "image-classification",
   },
 
   AutoModelForObjectDetection: {
@@ -117,6 +123,7 @@ export const MODEL_CLASSES: Record<string, ModelClassDef> = {
     callOutputs: ["logits", "pred_boxes"],
     companionLoaders: ["AutoProcessor"],
     requiresProcessor: true,
+    postProcessCategory: "object-detection",
   },
 
   AutoModelForImageSegmentation: {
@@ -128,6 +135,7 @@ export const MODEL_CLASSES: Record<string, ModelClassDef> = {
     callOutputs: ["logits", "pred_masks"],
     companionLoaders: ["AutoProcessor"],
     requiresProcessor: true,
+    postProcessCategory: "image-segmentation",
   },
 
   AutoModelForSemanticSegmentation: {
@@ -139,6 +147,7 @@ export const MODEL_CLASSES: Record<string, ModelClassDef> = {
     callOutputs: ["logits"],
     companionLoaders: ["AutoProcessor"],
     requiresProcessor: true,
+    postProcessCategory: "semantic-segmentation",
   },
 
   AutoModelForUniversalSegmentation: {
@@ -150,6 +159,7 @@ export const MODEL_CLASSES: Record<string, ModelClassDef> = {
     callOutputs: ["class_queries_logits", "masks_queries_logits"],
     companionLoaders: ["AutoProcessor"],
     requiresProcessor: true,
+    postProcessCategory: "universal-segmentation",
   },
 
   AutoModelForMaskGeneration: {
@@ -161,6 +171,7 @@ export const MODEL_CLASSES: Record<string, ModelClassDef> = {
     callOutputs: ["iou_scores", "pred_masks"],
     companionLoaders: ["AutoProcessor"],
     requiresProcessor: true,
+    postProcessCategory: "mask-generation",
   },
 
   /* ─── Audio ───────────────────────────────────────────────────────── */
@@ -182,12 +193,12 @@ export const MODEL_CLASSES: Record<string, ModelClassDef> = {
     label: "AutoModelForTextToSpectrogram",
     category: "Audio",
     description:
-      "Generate mel-spectrogram frames from text for speech synthesis (SpeechT5-style).",
-    executionModes: ["call", "generate"],
+      "Generate mel-spectrogram frames from text for speech synthesis (SpeechT5-style). Uses generate_speech() with speaker embeddings and vocoder.",
+    executionModes: ["call"],
     callOutputs: ["spectrogram"],
-    generateOutputs: ["spectrogram"],
     companionLoaders: ["AutoTokenizer"],
     requiresProcessor: false,
+    postProcessCategory: "spectrogram",
   },
 
   AutoModelForTextToWaveform: {
@@ -198,6 +209,7 @@ export const MODEL_CLASSES: Record<string, ModelClassDef> = {
     callOutputs: ["waveform"],
     companionLoaders: ["AutoTokenizer"],
     requiresProcessor: false,
+    postProcessCategory: "text-to-waveform",
   },
 
   /* ─── Vision-Language ─────────────────────────────────────────────── */

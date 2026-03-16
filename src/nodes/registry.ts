@@ -25,8 +25,10 @@ import { ChatTemplateNode } from "@/nodes/transformers/ChatTemplateNode.tsx";
 import { EnvConfigNode } from "@/nodes/transformers/EnvConfigNode.tsx";
 import { GenerateNode } from "@/nodes/transformers/GenerateNode.tsx";
 import { GenerationConfigNode } from "@/nodes/transformers/GenerationConfigNode.tsx";
+import { ModelCallNode } from "@/nodes/transformers/ModelCallNode.tsx";
 import { ModelLoaderNode } from "@/nodes/transformers/ModelLoaderNode.tsx";
 import { PipelineNode } from "@/nodes/transformers/PipelineNode.tsx";
+import { PostProcessNode } from "@/nodes/transformers/PostProcessNode.tsx";
 import { ProcessorNode } from "@/nodes/transformers/ProcessorNode.tsx";
 import { TokenizerDecodeNode } from "@/nodes/transformers/TokenizerDecodeNode.tsx";
 import { TokenizerEncodeNode } from "@/nodes/transformers/TokenizerEncodeNode.tsx";
@@ -66,6 +68,9 @@ export const nodeTypes: Record<string, any> = {
   transformersGenerationConfig: GenerationConfigNode,
   audioInput: MediaInputNode,
   audioOutput: AudioOutputNode,
+  videoInput: MediaInputNode,
+  transformersModelCall: ModelCallNode,
+  transformersPostProcessCall: PostProcessNode,
 };
 
 export const edgeTypes: Record<string, any> = {
@@ -140,7 +145,11 @@ export const getNodeHandles = (
       }),
     );
   } else if (node.type === "folderInput") {
-    handles.sources.push({ id: "out", label: "FILES", offsetY: 70 });
+    handles.sources.push({ id: "out", label: "ALL FILES", offsetY: 50 });
+    handles.sources.push({ id: "images", label: "IMAGES", offsetY: 80 });
+    handles.sources.push({ id: "audio", label: "AUDIO", offsetY: 110 });
+    handles.sources.push({ id: "text", label: "TEXT", offsetY: 140 });
+    handles.sources.push({ id: "video", label: "VIDEO", offsetY: 170 });
   } else if (node.type === "batchIterator") {
     handles.targets.push({ id: "list", label: "LIST", offsetY: 70 });
     handles.sources.push({ id: "item", label: "ITEM", offsetY: 70 });
@@ -234,6 +243,18 @@ export const getNodeHandles = (
     handles.sources.push({ id: "audio", label: "AUDIO", offsetY: 70 });
   } else if (node.type === "audioOutput") {
     handles.targets.push({ id: "audio", label: "AUDIO", offsetY: 70 });
+  } else if (node.type === "videoInput") {
+    handles.sources.push({ id: "video", label: "VIDEO", offsetY: 70 });
+  } else if (node.type === "transformersModelCall") {
+    handles.targets.push({ id: "model", label: "MODEL", offsetY: 50 });
+    handles.targets.push({ id: "tensors", label: "TENSORS", offsetY: 80 });
+    handles.sources.push({ id: "outputs", label: "OUTPUTS", offsetY: 70 });
+  } else if (node.type === "transformersPostProcessCall") {
+    handles.targets.push({ id: "outputs", label: "OUTPUTS", offsetY: 50 });
+    handles.targets.push({ id: "tokenizer", label: "TOKENIZER", offsetY: 80 });
+    handles.targets.push({ id: "processor", label: "PROCESSOR", offsetY: 110 });
+    handles.targets.push({ id: "encoded_inputs", label: "ENCODED", offsetY: 140 });
+    handles.sources.push({ id: "result", label: "RESULT", offsetY: 80 });
   }
 
   return handles;

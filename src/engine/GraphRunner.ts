@@ -1,3 +1,4 @@
+import { DEFAULTS } from "@/config/defaults.ts";
 import { executeNode } from "@/engine/nodeExecutors.ts";
 import type { FlowNode } from "@/types.ts";
 import type { Edge } from "@xyflow/react";
@@ -21,6 +22,7 @@ export class GraphRunner {
   expectedInputs: Record<string, Set<string>>;
   receivedInputs: Record<string, Record<string, any>>;
   isRunning: boolean;
+  executionDelayMs: number;
 
   constructor(
     nodes: FlowNode[],
@@ -28,6 +30,7 @@ export class GraphRunner {
     setDisplayData: (nodeId: string, val: any, isStream: boolean) => void,
     setRunStatus: (status: string) => void,
     hooks: GraphRunnerHooks,
+    executionDelayMs?: number,
   ) {
     this.nodes = nodes;
     this.edges = edges;
@@ -37,6 +40,7 @@ export class GraphRunner {
     this.expectedInputs = {};
     this.receivedInputs = {};
     this.isRunning = true;
+    this.executionDelayMs = executionDelayMs ?? DEFAULTS.nodeExecutionDelayMs;
   }
 
   async start() {
@@ -119,7 +123,7 @@ export class GraphRunner {
         } else {
           setTimeout(() => {
             if (this.isRunning) this.executeNode(tId, isStream);
-          }, 600);
+          }, this.executionDelayMs);
         }
       }
     });

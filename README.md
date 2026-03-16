@@ -14,14 +14,14 @@ RelaxUI is a fully client-side, node-based workflow builder that lets you design
 - **Rich output visualizations** — bar charts, highlighted NER spans, bounding box overlays, side-by-side comparison, tensor info, and more (auto-detected from pipeline results)
 - **Fullscreen image viewer** — enlarge images with bounding boxes and compare sliders
 - **Copy output** — one-click copy button on Output Text nodes
-- **Workflow Registry** — 30+ ready-made workflows for every pipeline task, model class, and batch processing scenario
+- **Workflow Registry** — 40+ ready-made workflows for every pipeline task, model class, and batch processing scenario
 - Import workflows from local file, URL, or the built-in registry
 - 24 pre-built pipeline macros (NLP, Vision, Audio, Multimodal)
-- 19+ model class macros for advanced use cases
+- 20 model class macros for advanced use cases (all integration-tested)
 - Streaming support for text generation and API calls
 - Macro system for creating reusable sub-workflows
 - **Undo/Redo** (Ctrl+Z / Ctrl+Shift+Z) and **Copy/Paste** (Ctrl+C / Ctrl+V) for nodes
-- **Batch processing** with progress tracking and multi-format download (JSON/CSV)
+- **Batch processing** with progress tracking, folder input with auto-categorization (images/audio/video/text), and multi-format download (JSON/CSV)
 - **Model size estimation** with color-coded badges and hardware compatibility hints (including tokenizer/processor nodes)
 - **Audio playback** — listen to audio files directly in Audio Input nodes
 - **Execution time tracking** per node
@@ -58,6 +58,12 @@ bun run build
 
 # Start production server
 bun start
+
+# Run model size checks (queries HuggingFace API)
+bun run test:sizes
+
+# Run integration tests (downloads models, runs inference)
+bun run test:models
 ```
 
 Open [http://localhost:3000](http://localhost:3000) in your browser.
@@ -71,12 +77,13 @@ src/
 ├── index.css                        CSS design tokens & Tailwind import
 ├── assets/                          Static files (favicons, icons, manifest)
 ├── config/                          Data-driven registries
+│   ├── defaults.ts                  Centralized runtime constants (device, delays, etc.)
 │   ├── nodeDimensions.ts            Node size/title definitions
 │   ├── nodeInfo.ts                  Node descriptions and I/O specs
 │   ├── pipelineRegistry.ts          24 pipeline task definitions (with visualization hints)
-│   ├── modelClassRegistry.ts        19+ model class definitions
+│   ├── modelClassRegistry.ts        20 model class definitions (with postProcessCategory)
 │   ├── generationDefaults.ts        Generation parameters schema
-│   └── workflowRegistry.ts          30+ ready-made workflow definitions
+│   └── workflowRegistry.ts          40+ ready-made workflow definitions
 ├── engine/                          Execution engine
 │   ├── GraphRunner.ts               Core graph execution with streaming
 │   ├── nodeExecutors.ts             Per-type executor dispatch
@@ -160,22 +167,22 @@ The `VisualizationRenderer` auto-detects data shapes when metadata is absent, ma
 
 ### Core Nodes
 
-| Node            | Type                        | Description                                            |
-| --------------- | --------------------------- | ------------------------------------------------------ |
-| Media Input     | `inputImage` / `audioInput` | Unified image/audio input with FILE/URL toggle         |
-| Input Text      | `inputText`                 | Provides a static string value                         |
-| Output Text     | `outputText`                | Rich visualization output with auto-detection          |
-| Output Image    | `outputImage`               | Image display with compare slider + annotation overlay |
-| Audio Output    | `audioOutput`               | Plays back audio data                                  |
-| Custom Script   | `customScript`              | Executes JavaScript with dynamic I/O ports             |
-| HTTP Request    | `httpRequest`               | Fetch API with SSE streaming support                   |
-| JSON Path       | `jsonPath`                  | Extracts values via dot notation                       |
-| Macro Node      | `macroNode`                 | Container for nested sub-workflows                     |
-| Batch Iterator  | `batchIterator`             | Iterate over array items with progress tracking        |
-| Delay           | `delay`                     | Pause execution for N milliseconds                     |
-| List Aggregator | `listAggregator`            | Collect streamed items into a single array             |
-| Folder Input    | `folderInput`               | Pick files from disk, returns object URLs              |
-| Download Data   | `downloadData`              | Export data as JSON or CSV                             |
+| Node            | Type                                       | Description                                                                    |
+| --------------- | ------------------------------------------ | ------------------------------------------------------------------------------ |
+| Media Input     | `inputImage` / `audioInput` / `videoInput` | Unified image/audio/video input with FILE/URL toggle                           |
+| Input Text      | `inputText`                                | Provides a static string value                                                 |
+| Output Text     | `outputText`                               | Rich visualization output with auto-detection                                  |
+| Output Image    | `outputImage`                              | Image display with compare slider + annotation overlay                         |
+| Audio Output    | `audioOutput`                              | Plays back audio data                                                          |
+| Custom Script   | `customScript`                             | Executes JavaScript with dynamic I/O ports                                     |
+| HTTP Request    | `httpRequest`                              | Fetch API with SSE streaming support                                           |
+| JSON Path       | `jsonPath`                                 | Extracts values via dot notation                                               |
+| Macro Node      | `macroNode`                                | Container for nested sub-workflows                                             |
+| Batch Iterator  | `batchIterator`                            | Iterate over array items with progress tracking                                |
+| Delay           | `delay`                                    | Pause execution for N milliseconds                                             |
+| List Aggregator | `listAggregator`                           | Collect streamed items into a single array                                     |
+| Folder Input    | `folderInput`                              | Pick folder, auto-categorize files, filtered outputs (images/audio/text/video) |
+| Download Data   | `downloadData`                             | Export data as JSON or CSV                                                     |
 
 ### Transformers.js Base Nodes
 
@@ -185,6 +192,8 @@ The `VisualizationRenderer` auto-detects data shapes when metadata is absent, ma
 | Model Loader     | `transformersModelLoader`                                     | Load any Auto/named model class        |
 | Companion Loader | `transformersTokenizerLoader` / `transformersProcessorLoader` | Load AutoTokenizer or AutoProcessor    |
 | Generate         | `transformersGenerate`                                        | model.generate() with TextStreamer     |
+| Model Call       | `transformersModelCall`                                       | Forward pass for call-only models      |
+| Post-Process     | `transformersPostProcessCall`                                 | Category-aware output post-processing  |
 | Tokenizer Encode | `transformersTokenizerEncode`                                 | Text to token tensors                  |
 | Tokenizer Decode | `transformersTokenizerDecode`                                 | Token IDs to text                      |
 | Processor        | `transformersProcessor`                                       | Multimodal input processing            |
@@ -272,21 +281,40 @@ Pre-built batch processing pipelines with progress tracking:
 | Batch Text Classification | Classify multiple text items            |
 | Batch Background Removal  | Remove backgrounds from multiple images |
 
-### Model Class Workflows (7)
+### Model Class Workflows (19)
 
-Complex multi-node workflows that use individual Transformers.js nodes (ModelLoader, TokenizerLoader, ProcessorLoader, Generate, Decode, etc.):
+Complex multi-node workflows that use individual Transformers.js nodes (ModelLoader, TokenizerLoader, ProcessorLoader, Generate/ModelCall, PostProcess, Decode, etc.). Generate-capable models use the Generate node; call-only models use ModelCall + PostProcess nodes.
 
-| Workflow                    | Model Class                       | Default Model                     | Device |
-| --------------------------- | --------------------------------- | --------------------------------- | ------ |
-| Causal LM (GPT-2)           | AutoModelForCausalLM              | Xenova/gpt2                       | wasm   |
-| Seq2Seq LM (Flan-T5)        | AutoModelForSeq2SeqLM             | Xenova/flan-t5-small              | wasm   |
-| Masked LM (BERT)            | AutoModelForMaskedLM              | Xenova/bert-base-uncased          | wasm   |
-| Speech-to-Text (Whisper)    | AutoModelForSpeechSeq2Seq         | Xenova/whisper-tiny.en            | wasm   |
-| Image Captioning (ViT-GPT2) | AutoModelForVision2Seq            | Xenova/vit-gpt2-image-captioning  | wasm   |
-| Florence-2                  | Florence2ForConditionalGeneration | onnx-community/Florence-2-base-ft | wasm   |
-| Qwen 3.5 (0.8B ONNX)        | Qwen3_5ForConditionalGeneration   | onnx-community/Qwen3.5-0.8B-ONNX  | webgpu |
+**Generate-mode workflows:**
 
-The Qwen 3.5 workflow uses per-module quantization (`q4` text / `fp16` vision encoder) and requires WebGPU.
+| Workflow                    | Model Class                       | Default Model                     |
+| --------------------------- | --------------------------------- | --------------------------------- |
+| Causal LM (GPT-2)           | AutoModelForCausalLM              | Xenova/gpt2                       |
+| Seq2Seq LM (Flan-T5)        | AutoModelForSeq2SeqLM             | Xenova/flan-t5-small              |
+| Speech-to-Text (Whisper)    | AutoModelForSpeechSeq2Seq         | Xenova/whisper-tiny.en            |
+| Image Captioning (ViT-GPT2) | AutoModelForVision2Seq            | Xenova/vit-gpt2-image-captioning  |
+| Florence-2                  | Florence2ForConditionalGeneration | onnx-community/Florence-2-base-ft |
+| Qwen 3.5 (0.8B ONNX)        | Qwen3_5ForConditionalGeneration   | onnx-community/Qwen3.5-0.8B-ONNX  |
+| TTS Spectrogram (SpeechT5)  | AutoModelForTextToSpectrogram     | Xenova/speecht5_tts               |
+
+**Call-mode workflows (forward pass + post-processing):**
+
+| Workflow                   | Model Class                        | Default Model                                          |
+| -------------------------- | ---------------------------------- | ------------------------------------------------------ |
+| Masked LM (BERT)           | AutoModelForMaskedLM               | Xenova/bert-base-uncased                               |
+| Base Model (Features)      | AutoModel                          | Xenova/bert-base-uncased                               |
+| Sequence Classification    | AutoModelForSequenceClassification | Xenova/distilbert-base-uncased-finetuned-sst-2-english |
+| Token Classification (NER) | AutoModelForTokenClassification    | Xenova/bert-base-NER                                   |
+| Question Answering         | AutoModelForQuestionAnswering      | Xenova/distilbert-base-cased-distilled-squad           |
+| Image Classification (ViT) | AutoModelForImageClassification    | Xenova/vit-base-patch16-224                            |
+| Object Detection (DETR)    | AutoModelForObjectDetection        | Xenova/detr-resnet-50                                  |
+| Image Segmentation         | AutoModelForImageSegmentation      | Xenova/detr-resnet-50-panoptic                         |
+| Semantic Segmentation      | AutoModelForSemanticSegmentation   | Xenova/segformer-b0-finetuned-ade-512-512              |
+| Universal Segmentation     | AutoModelForUniversalSegmentation  | onnx-community/maskformer-swin-small-ade               |
+| Mask Generation (SAM)      | AutoModelForMaskGeneration         | Xenova/slimsam-77-uniform                              |
+| TTS Waveform (MMS)         | AutoModelForTextToWaveform         | Xenova/mms-tts-eng                                     |
+
+Device auto-detection: WebGPU when available, WASM fallback. The Qwen 3.5 workflow uses per-module quantization (`q4` text / `fp16` vision encoder) and requires WebGPU.
 
 ### Import Options
 
@@ -336,7 +364,7 @@ All generation parameters are configurable through the Generate node or Generati
 
 | Option       | Values                              | Description                                                                     |
 | ------------ | ----------------------------------- | ------------------------------------------------------------------------------- |
-| `device`     | `wasm`, `webgpu`, `cpu`             | Hardware acceleration backend                                                   |
+| `device`     | `wasm`, `webgpu`, `cpu`             | Hardware acceleration backend (auto-detects WebGPU with WASM fallback)          |
 | `dtype`      | `fp32`, `fp16`, `q8`, `q4`, `q4f16` | Quantization precision                                                          |
 | Custom dtype | JSON object                         | Per-module quantization (e.g., `{"embed_tokens":"q4","vision_encoder":"fp16"}`) |
 
@@ -360,6 +388,26 @@ export const GENERATION_PARAMS = {
 ```
 
 The UI auto-generates the appropriate control. No other code changes needed.
+
+## Testing
+
+All 20 model classes have been integration-tested with real model downloads and inference runs:
+
+```bash
+# Check all default model sizes (flags models over 1 GB)
+bun run test:sizes
+
+# Full integration test — loads models, runs inference, verifies outputs
+bun run tests/integration-test.ts
+```
+
+The integration test covers:
+
+- All 20 model classes from `modelClassRegistry.ts` (21 test cases covering both `call` and `generate` modes)
+- Actual model downloads from HuggingFace Hub
+- Forward pass verification for call-only models (output keys + tensor shapes)
+- Generate + decode verification for generate-capable models
+- Special handling for Whisper (audio), SAM (point prompts), SpeechT5 (vocoder), Florence-2 (multimodal)
 
 ## Tech Stack
 
