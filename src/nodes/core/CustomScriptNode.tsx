@@ -32,26 +32,26 @@ export const CustomScriptNode = (props: any) => {
   return (
     <BaseNode {...props}>
       <div className="flex justify-between items-center mb-2 px-1">
-        <span className="text-[10px] text-[var(--relax-text-muted)] font-bold tracking-widest">
+        <span className="text-[10px] text-(--relax-text-muted) font-bold tracking-widest">
           PORTS ({inputsList.length})
         </span>
         <div className="flex gap-1">
           <button
             onClick={handleAddInput}
-            className="w-5 h-5 flex items-center justify-center bg-[var(--relax-border)] rounded text-[var(--relax-accent)] hover:bg-[var(--relax-accent)] hover:text-[var(--relax-bg-primary)] transition-colors text-[10px] font-bold"
+            className="w-5 h-5 flex items-center justify-center bg-(--relax-border) rounded text-(--relax-accent) hover:bg-(--relax-accent) hover:text-(--relax-bg-primary) transition-colors text-[10px] font-bold"
           >
             +
           </button>
           <button
             onClick={handleRemoveInput}
-            className="w-5 h-5 flex items-center justify-center bg-[var(--relax-border)] rounded text-red-500 hover:bg-red-500 hover:text-white transition-colors text-[10px] font-bold"
+            className="w-5 h-5 flex items-center justify-center bg-(--relax-border) rounded text-red-500 hover:bg-red-500 hover:text-white transition-colors text-[10px] font-bold"
           >
             -
           </button>
         </div>
       </div>
       <textarea
-        className="nowheel nodrag w-full flex-1 bg-[var(--relax-bg-primary)]/60 border border-[var(--relax-border)] rounded p-2 text-xs font-mono text-white focus:outline-none focus:border-[var(--relax-accent)] resize-none custom-scrollbar"
+        className="nowheel nodrag w-full flex-1 bg-(--relax-bg-primary)/60 border border-(--relax-border) rounded p-2 text-xs font-mono text-white focus:outline-none focus:border-(--relax-accent) resize-none custom-scrollbar"
         value={props.data.script}
         onChange={(e) => updateNodeData(props.id, "script", e.target.value)}
       />

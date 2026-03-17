@@ -21,7 +21,7 @@ export const CompanionLoaderNode = (props: any) => {
     <BaseNode {...props}>
       <div className="flex flex-col gap-2 w-full nowheel nodrag">
         <div className="flex flex-col gap-0.5">
-          <label className="text-[9px] text-[var(--relax-text-muted)] font-bold tracking-widest uppercase">
+          <label className="text-[9px] text-(--relax-text-muted) font-bold tracking-widest uppercase">
             MODEL ID
           </label>
           <input
@@ -31,7 +31,7 @@ export const CompanionLoaderNode = (props: any) => {
               updateNodeData(props.id, "model_id", e.target.value)
             }
             placeholder="org/model-name"
-            className="w-full bg-[var(--relax-bg-primary)]/60 border border-[var(--relax-border)] rounded px-2 py-1 text-xs font-mono text-white focus:outline-none focus:border-[var(--relax-accent)]"
+            className="w-full bg-(--relax-bg-primary)/60 border border-(--relax-border) rounded px-2 py-1 text-xs font-mono text-white focus:outline-none focus:border-(--relax-accent)"
           />
         </div>
         <ModelSizeBadge sizeBytes={modelSize} />

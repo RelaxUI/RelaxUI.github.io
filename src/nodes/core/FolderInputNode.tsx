@@ -65,9 +65,9 @@ export const FolderInputNode = (props: any) => {
 
   return (
     <BaseNode {...props}>
-      <div className="flex-1 w-full flex flex-col items-center justify-center border border-dashed border-[var(--relax-border)] rounded bg-[var(--relax-bg-primary)]/60 hover:border-[var(--relax-accent)] transition-colors p-4 nodrag">
+      <div className="flex-1 w-full flex flex-col items-center justify-center border border-dashed border-(--relax-border) rounded bg-(--relax-bg-primary)/60 hover:border-(--relax-accent) transition-colors p-4 nodrag">
         <label className="w-full h-full flex flex-col items-center justify-center cursor-pointer">
-          <span className="text-[10px] text-[var(--relax-text-muted)] font-bold">
+          <span className="text-[10px] text-(--relax-text-muted) font-bold">
             SELECT FOLDER
           </span>
           <input
@@ -79,21 +79,21 @@ export const FolderInputNode = (props: any) => {
           />
         </label>
         {props.data.count > 0 && (
-          <div className="mt-2 w-full text-[9px] font-mono bg-[var(--relax-bg-elevated)] px-2 py-1 border border-[var(--relax-border)] rounded space-y-0.5">
-            <div className="text-[var(--relax-success)] font-bold">
+          <div className="mt-2 w-full text-[9px] font-mono bg-(--relax-bg-elevated) px-2 py-1 border border-(--relax-border) rounded space-y-0.5">
+            <div className="text-(--relax-success) font-bold">
               {props.data.count} files loaded
             </div>
             {counts.image > 0 && (
-              <div className="text-[var(--relax-text-muted)]">{counts.image} images</div>
+              <div className="text-(--relax-text-muted)">{counts.image} images</div>
             )}
             {counts.audio > 0 && (
-              <div className="text-[var(--relax-text-muted)]">{counts.audio} audio</div>
+              <div className="text-(--relax-text-muted)">{counts.audio} audio</div>
             )}
             {counts.video > 0 && (
-              <div className="text-[var(--relax-text-muted)]">{counts.video} video</div>
+              <div className="text-(--relax-text-muted)">{counts.video} video</div>
             )}
             {counts.text > 0 && (
-              <div className="text-[var(--relax-text-muted)]">{counts.text} text</div>
+              <div className="text-(--relax-text-muted)">{counts.text} text</div>
             )}
           </div>
         )}

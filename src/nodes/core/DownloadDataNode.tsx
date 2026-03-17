@@ -183,12 +183,12 @@ export const DownloadDataNode = (props: any) => {
     <BaseNode {...props}>
       <div className="flex flex-col gap-2 w-full h-full items-center justify-center nowheel nodrag">
         {formats.length > 1 && (
-          <div className="flex bg-[var(--relax-bg-primary)]/60 rounded p-0.5 border border-[var(--relax-border)] w-full">
+          <div className="flex bg-(--relax-bg-primary)/60 rounded p-0.5 border border-(--relax-border) w-full">
             {formats.map((f) => (
               <button
                 key={f}
                 onClick={() => updateNodeData(props.id, "format", f)}
-                className={`flex-1 text-[9px] font-bold rounded py-0.5 ${currentFormat === f ? "bg-[var(--relax-accent)] text-[var(--relax-bg-primary)]" : "text-[var(--relax-text-muted)] hover:text-white"}`}
+                className={`flex-1 text-[9px] font-bold rounded py-0.5 ${currentFormat === f ? "bg-(--relax-accent) text-(--relax-bg-primary)" : "text-(--relax-text-muted) hover:text-white"}`}
               >
                 {f.toUpperCase()}
               </button>
@@ -197,7 +197,7 @@ export const DownloadDataNode = (props: any) => {
         )}
 
         {isArray && (
-          <div className="text-[9px] text-[var(--relax-text-muted)] font-mono">
+          <div className="text-[9px] text-(--relax-text-muted) font-mono">
             {data.length} items
           </div>
         )}
@@ -205,7 +205,7 @@ export const DownloadDataNode = (props: any) => {
         <button
           onClick={handleDownload}
           disabled={!data || downloading}
-          className={`px-4 py-3 rounded font-bold text-xs tracking-wider transition-colors shadow-lg ${data ? "bg-[var(--relax-accent)] text-[var(--relax-bg-primary)] hover:bg-[var(--relax-success)]" : "bg-[var(--relax-border)] text-[var(--relax-text-muted)] cursor-not-allowed border border-[var(--relax-border-hover)]"}`}
+          className={`px-4 py-3 rounded font-bold text-xs tracking-wider transition-colors shadow-lg ${data ? "bg-(--relax-accent) text-(--relax-bg-primary) hover:bg-(--relax-success)" : "bg-(--relax-border) text-(--relax-text-muted) cursor-not-allowed border border-(--relax-border-hover)"}`}
         >
           {downloading
             ? "DOWNLOADING..."

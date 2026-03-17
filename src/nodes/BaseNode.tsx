@@ -98,17 +98,17 @@ export const BaseNode = ({
   return (
     <div
       ref={nodeRef}
-      className={`relative bg-[var(--relax-bg-elevated)]/95 backdrop-blur-md border transition-all duration-300 rounded-xl flex flex-col z-10 group
+      className={`relative bg-(--relax-bg-elevated)/95 backdrop-blur-md border transition-all duration-300 rounded-xl flex flex-col z-10 group
         ${
           isError
             ? "border-red-500 shadow-[0_0_20px_rgba(239,68,68,0.4)]"
             : isComputing || isLoading
               ? "computing-node shadow-[0_0_25px_rgba(0,255,170,0.4)]"
               : selected
-                ? "border-[var(--relax-accent)] shadow-[0_0_20px_rgba(0,229,255,0.15)]"
+                ? "border-(--relax-accent) shadow-[0_0_20px_rgba(0,229,255,0.15)]"
                 : isMacro
-                  ? "border-[var(--relax-accent)]/30 shadow-[0_0_15px_rgba(0,229,255,0.1)] hover:border-[var(--relax-border-active)]"
-                  : "border-[var(--relax-border-hover)] shadow-xl hover:border-[var(--relax-border-active)]"
+                  ? "border-(--relax-accent)/30 shadow-[0_0_15px_rgba(0,229,255,0.1)] hover:border-(--relax-border-active)"
+                  : "border-(--relax-border-hover) shadow-xl hover:border-(--relax-border-active)"
         }`}
       style={{
         width: effectiveW,
@@ -121,7 +121,7 @@ export const BaseNode = ({
         <button
           onClick={() => setInfoNodeId(id)}
           aria-label="Node info and rename"
-          className="bg-[var(--relax-border)] border border-[var(--relax-border-hover)] text-[var(--relax-accent)] px-2 py-1.5 rounded-md text-[10px] font-bold tracking-wider hover:bg-[var(--relax-accent)] hover:text-[var(--relax-bg-primary)] hover:cursor-pointer transition-colors shadow-lg flex items-center justify-center gap-1.5 min-w-8"
+          className="bg-(--relax-border) border border-(--relax-border-hover) text-(--relax-accent) px-2 py-1.5 rounded-md text-[10px] font-bold tracking-wider hover:bg-(--relax-accent) hover:text-(--relax-bg-primary) hover:cursor-pointer transition-colors shadow-lg flex items-center justify-center gap-1.5 min-w-8"
           title="Node Info & Rename"
         >
           <span className="text-sm leading-none -mt-0.5">i</span>{" "}
@@ -132,7 +132,7 @@ export const BaseNode = ({
           <button
             onClick={() => setCurrentView(id)}
             aria-label="Open macro"
-            className="bg-[var(--relax-border)] border border-[var(--relax-border-hover)] text-[var(--relax-success)] px-2 py-1.5 rounded-md text-[10px] font-bold tracking-wider hover:bg-[var(--relax-success)] hover:text-[var(--relax-bg-primary)] hover:cursor-pointer transition-colors shadow-lg flex items-center justify-center gap-1.5 min-w-8"
+            className="bg-(--relax-border) border border-(--relax-border-hover) text-(--relax-success) px-2 py-1.5 rounded-md text-[10px] font-bold tracking-wider hover:bg-(--relax-success) hover:text-(--relax-bg-primary) hover:cursor-pointer transition-colors shadow-lg flex items-center justify-center gap-1.5 min-w-8"
           >
             <span className="text-xs text-center leading-none -mt-0.5">
               &gt;
@@ -144,7 +144,7 @@ export const BaseNode = ({
         <button
           onClick={() => deleteNode(id)}
           aria-label="Delete node"
-          className="bg-[var(--relax-border)] border border-[var(--relax-border-hover)] text-red-500 px-2 py-1.5 rounded-md text-[10px] font-bold tracking-wider hover:bg-red-500 hover:text-white hover:cursor-pointer transition-colors shadow-lg flex items-center justify-center gap-1.5 min-w-8"
+          className="bg-(--relax-border) border border-(--relax-border-hover) text-red-500 px-2 py-1.5 rounded-md text-[10px] font-bold tracking-wider hover:bg-red-500 hover:text-white hover:cursor-pointer transition-colors shadow-lg flex items-center justify-center gap-1.5 min-w-8"
         >
           <span className="text-xs">x</span>{" "}
           {!isZoomedOut && <span>DELETE</span>}
@@ -176,22 +176,22 @@ export const BaseNode = ({
         />
       ))}
 
-      <div className="w-full h-8 bg-[var(--relax-bg-primary)]/50 border-b border-[var(--relax-border)] flex items-center px-3 justify-between rounded-t-xl custom-drag-handle">
+      <div className="w-full h-8 bg-(--relax-bg-primary)/50 border-b border-(--relax-border) flex items-center px-3 justify-between rounded-t-xl custom-drag-handle">
         <span
-          className={`text-[10px] font-bold tracking-widest uppercase truncate max-w-[55%] ${isComputing || isMacro ? "text-[var(--relax-accent)]" : "text-white"}`}
+          className={`text-[10px] font-bold tracking-widest uppercase truncate max-w-[55%] ${isComputing || isMacro ? "text-(--relax-accent)" : "text-white"}`}
           title={data.label || dims.title}
         >
           {data.label || dims.title}
         </span>
         <div className="flex items-center gap-2 shrink-0">
           {execTime !== undefined && !isComputing && (
-            <span className="text-[8px] text-[var(--relax-success)] font-mono opacity-70">
+            <span className="text-[8px] text-(--relax-success) font-mono opacity-70">
               {execTime >= 1000
                 ? `${(execTime / 1000).toFixed(1)}s`
                 : `${execTime}ms`}
             </span>
           )}
-          <span className="text-[8px] text-[var(--relax-text-muted)] font-mono pointer-events-none">
+          <span className="text-[8px] text-(--relax-text-muted) font-mono pointer-events-none">
             {dims.sub}
           </span>
         </div>
@@ -216,7 +216,7 @@ export const BaseNode = ({
         className={`nodrag absolute bottom-0 right-0 w-4 h-4 cursor-nwse-resize transition-opacity z-40 ${selected ? 'opacity-60' : 'opacity-0 group-hover:opacity-60'}`}
         title="Drag to resize"
       >
-        <svg viewBox="0 0 12 12" className="w-full h-full text-[var(--relax-text-muted)]">
+        <svg viewBox="0 0 12 12" className="w-full h-full text-(--relax-text-muted)">
           <path d="M11 1L1 11M11 5L5 11M11 9L9 11" stroke="currentColor" strokeWidth="1.5" fill="none" />
         </svg>
       </div>

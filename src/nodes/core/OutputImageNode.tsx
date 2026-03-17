@@ -5,10 +5,14 @@ import { RuntimeContext } from "@/context/RuntimeContext.ts";
 import { BaseNode } from "@/nodes/BaseNode.tsx";
 import { useContext } from "react";
 
-const FullscreenButton = ({ onClick }: { onClick: (e: React.MouseEvent) => void }) => (
+const FullscreenButton = ({
+  onClick,
+}: {
+  onClick: (e: React.MouseEvent) => void;
+}) => (
   <button
     onClick={onClick}
-    className="absolute bottom-2 right-2 bg-[var(--relax-bg-primary)]/90 text-white border border-[var(--relax-border-hover)] rounded p-1.5 opacity-0 group-hover:opacity-100 hover:text-[var(--relax-accent)] hover:border-[var(--relax-accent)] transition-all shadow-lg z-30 nodrag"
+    className="absolute bottom-2 right-2 bg-(--relax-bg-primary)/90 text-white border border-(--relax-border-hover) rounded p-1.5 opacity-0 group-hover:opacity-100 hover:text-(--relax-accent) hover:border-(--relax-accent) transition-all shadow-lg z-30 nodrag"
     title="Fullscreen"
   >
     <svg
@@ -52,7 +56,7 @@ export const OutputImageNode = (props: any) => {
   return (
     <BaseNode {...props}>
       <div
-        className={`relative flex-1 w-full bg-[var(--relax-bg-primary)]/60 border border-[var(--relax-border)] rounded overflow-hidden nodrag nowheel ${hasIn1 || hasIn2 ? "min-h-[180px]" : "flex items-center justify-center"}`}
+        className={`relative flex-1 w-full bg-(--relax-bg-primary)/60 border border-(--relax-border) rounded overflow-hidden nodrag nowheel ${hasIn1 || hasIn2 ? "min-h-45" : "flex items-center justify-center"}`}
       >
         {hasAnnotations && hasIn1 && isBoundingBoxes ? (
           <div className="relative">
@@ -76,7 +80,7 @@ export const OutputImageNode = (props: any) => {
             <img
               src={data.in1}
               alt="Source"
-              className="max-h-[150px] rounded object-contain"
+              className="max-h-37.5 rounded object-contain"
             />
             <SegmentationOverlay data={annotationData} />
           </div>

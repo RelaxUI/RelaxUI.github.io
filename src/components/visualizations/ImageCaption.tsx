@@ -20,10 +20,10 @@ export function ImageCaption({
         <img
           src={sourceImage}
           alt="Source"
-          className="max-h-[120px] rounded object-contain"
+          className="max-h-30 rounded object-contain"
         />
       )}
-      <div className="text-xs font-mono text-white text-center leading-relaxed bg-[var(--relax-bg-primary)] rounded p-2 w-full">
+      <div className="text-xs font-mono text-white text-center leading-relaxed bg-(--relax-bg-primary) rounded p-2 w-full">
         {caption || "No caption generated"}
       </div>
     </div>

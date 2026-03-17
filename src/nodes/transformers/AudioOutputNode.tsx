@@ -23,7 +23,7 @@ export const AudioOutputNode = (props: any) => {
         {data ? (
           <audio ref={audioRef} controls className="w-full h-8" />
         ) : (
-          <span className="text-[10px] text-[var(--relax-text-muted)] font-mono opacity-50">
+          <span className="text-[10px] text-(--relax-text-muted) font-mono opacity-50">
             Waiting for audio...
           </span>
         )}

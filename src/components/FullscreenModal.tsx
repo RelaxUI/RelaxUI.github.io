@@ -9,7 +9,7 @@ interface FullscreenModalProps {
 export function FullscreenModal({ image, onClose }: FullscreenModalProps) {
   return (
     <div
-      className="fixed inset-0 z-100 bg-[var(--relax-bg-primary)]/95 backdrop-blur-md flex items-center justify-center p-8"
+      className="fixed inset-0 z-100 bg-(--relax-bg-primary)/95 backdrop-blur-md flex items-center justify-center p-8"
       onClick={onClose}
       role="dialog"
       aria-modal="true"
@@ -39,7 +39,7 @@ export function FullscreenModal({ image, onClose }: FullscreenModalProps) {
         )}
       </div>
       <div
-        className="absolute top-6 right-8 text-[var(--relax-text-muted)] text-4xl hover:text-white transition-colors cursor-pointer"
+        className="absolute top-6 right-8 text-(--relax-text-muted) text-4xl hover:text-white transition-colors cursor-pointer"
         onClick={onClose}
       >
         x

@@ -21,20 +21,26 @@ const OUTPUT_FORMATS = ["original", "png", "jpg", "webp"] as const;
 const RESOLUTIONS = ["1K", "2K", "4K"] as const;
 
 const ANCHOR_LABELS = [
-  "TL", "TC", "TR",
-  "ML", "MC", "MR",
-  "BL", "BC", "BR",
+  "TL",
+  "TC",
+  "TR",
+  "ML",
+  "MC",
+  "MR",
+  "BL",
+  "BC",
+  "BR",
 ] as const;
 
 /** Base dimensions at 1K for each aspect ratio */
 const BASE_DIMENSIONS: Record<string, [number, number]> = {
-  "1:1":  [1024, 1024],
-  "2:3":  [832, 1248],
-  "3:2":  [1248, 832],
-  "3:4":  [864, 1184],
-  "4:3":  [1184, 864],
-  "4:5":  [896, 1152],
-  "5:4":  [1152, 896],
+  "1:1": [1024, 1024],
+  "2:3": [832, 1248],
+  "3:2": [1248, 832],
+  "3:4": [864, 1184],
+  "4:3": [1184, 864],
+  "4:5": [896, 1152],
+  "5:4": [1152, 896],
   "9:16": [768, 1344],
   "16:9": [1344, 768],
   "21:9": [1536, 672],
@@ -75,7 +81,7 @@ export const ImageProcessNode = (props: any) => {
       <div className="flex flex-col gap-2.5 w-full nowheel nodrag overflow-y-auto">
         {/* Output Format */}
         <div className="flex flex-col gap-1">
-          <label className="text-[9px] font-bold tracking-widest text-[var(--relax-text-muted)] uppercase">
+          <label className="text-[9px] font-bold tracking-widest text-(--relax-text-muted) uppercase">
             Output Format
           </label>
           <select
@@ -83,7 +89,7 @@ export const ImageProcessNode = (props: any) => {
             onChange={(e) =>
               updateNodeData(props.id, "outputFormat", e.target.value)
             }
-            className="w-full bg-[var(--relax-bg-primary)] border border-[var(--relax-border)] rounded px-2 py-1.5 text-[10px] font-mono text-white focus:outline-none focus:border-[var(--relax-accent)] appearance-none cursor-pointer"
+            className="w-full bg-(--relax-bg-primary) border border-(--relax-border) rounded px-2 py-1.5 text-[10px] font-mono text-white focus:outline-none focus:border-(--relax-accent) appearance-none cursor-pointer"
           >
             {OUTPUT_FORMATS.map((f) => (
               <option key={f} value={f}>
@@ -95,7 +101,7 @@ export const ImageProcessNode = (props: any) => {
 
         {/* Aspect Ratio */}
         <div className="flex flex-col gap-1">
-          <label className="text-[9px] font-bold tracking-widest text-[var(--relax-text-muted)] uppercase">
+          <label className="text-[9px] font-bold tracking-widest text-(--relax-text-muted) uppercase">
             Aspect Ratio
           </label>
           <select
@@ -103,7 +109,7 @@ export const ImageProcessNode = (props: any) => {
             onChange={(e) =>
               updateNodeData(props.id, "aspectRatio", e.target.value)
             }
-            className="w-full bg-[var(--relax-bg-primary)] border border-[var(--relax-border)] rounded px-2 py-1.5 text-[10px] font-mono text-white focus:outline-none focus:border-[var(--relax-accent)] appearance-none cursor-pointer"
+            className="w-full bg-(--relax-bg-primary) border border-(--relax-border) rounded px-2 py-1.5 text-[10px] font-mono text-white focus:outline-none focus:border-(--relax-accent) appearance-none cursor-pointer"
           >
             {ASPECT_RATIOS.map((r) => (
               <option key={r} value={r}>
@@ -115,18 +121,18 @@ export const ImageProcessNode = (props: any) => {
 
         {/* Resolution */}
         <div className="flex flex-col gap-1">
-          <label className="text-[9px] font-bold tracking-widest text-[var(--relax-text-muted)] uppercase">
+          <label className="text-[9px] font-bold tracking-widest text-(--relax-text-muted) uppercase">
             Resolution
           </label>
-          <div className="flex bg-[var(--relax-bg-primary)]/60 rounded p-0.5 border border-[var(--relax-border)] w-full">
+          <div className="flex bg-(--relax-bg-primary)/60 rounded p-0.5 border border-(--relax-border) w-full">
             {RESOLUTIONS.map((r) => (
               <button
                 key={r}
                 onClick={() => updateNodeData(props.id, "resolution", r)}
                 className={`flex-1 text-[9px] font-bold rounded py-1 transition-colors ${
                   resolution === r
-                    ? "bg-[var(--relax-accent)] text-[var(--relax-bg-primary)]"
-                    : "text-[var(--relax-text-muted)] hover:text-white"
+                    ? "bg-(--relax-accent) text-(--relax-bg-primary)"
+                    : "text-(--relax-text-muted) hover:text-white"
                 }`}
               >
                 {r}
@@ -136,8 +142,8 @@ export const ImageProcessNode = (props: any) => {
         </div>
 
         {/* Target Dimensions Display */}
-        <div className="flex items-center justify-center bg-[var(--relax-bg-primary)]/60 border border-[var(--relax-border)] rounded px-2 py-1.5">
-          <span className="text-[10px] font-mono text-[var(--relax-accent)]">
+        <div className="flex items-center justify-center bg-(--relax-bg-primary)/60 border border-(--relax-border) rounded px-2 py-1.5">
+          <span className="text-[10px] font-mono text-(--relax-accent)">
             {dimensions
               ? `${dimensions[0]} x ${dimensions[1]}`
               : "Original Size"}
@@ -146,20 +152,18 @@ export const ImageProcessNode = (props: any) => {
 
         {/* Crop Anchor */}
         <div className="flex flex-col gap-1">
-          <label className="text-[9px] font-bold tracking-widest text-[var(--relax-text-muted)] uppercase">
+          <label className="text-[9px] font-bold tracking-widest text-(--relax-text-muted) uppercase">
             Crop Anchor
           </label>
-          <div className="grid grid-cols-3 gap-[2px] w-fit mx-auto">
+          <div className="grid grid-cols-3 gap-0.5 w-fit mx-auto">
             {ANCHOR_LABELS.map((anchor) => (
               <button
                 key={anchor}
-                onClick={() =>
-                  updateNodeData(props.id, "cropAnchor", anchor)
-                }
+                onClick={() => updateNodeData(props.id, "cropAnchor", anchor)}
                 className={`w-6 h-6 rounded-sm text-[7px] font-bold transition-colors border ${
                   cropAnchor === anchor
-                    ? "bg-[var(--relax-accent)] text-[var(--relax-bg-primary)] border-[var(--relax-accent)]"
-                    : "bg-[var(--relax-bg-primary)] text-[var(--relax-text-muted)] border-[var(--relax-border)] hover:border-[var(--relax-border-hover)] hover:text-white"
+                    ? "bg-(--relax-accent) text-(--relax-bg-primary) border-(--relax-accent)"
+                    : "bg-(--relax-bg-primary) text-(--relax-text-muted) border-(--relax-border) hover:border-(--relax-border-hover) hover:text-white"
                 }`}
                 title={anchor}
               >
@@ -172,10 +176,10 @@ export const ImageProcessNode = (props: any) => {
         {/* Quality Slider */}
         <div className="flex flex-col gap-1">
           <div className="flex items-center justify-between">
-            <label className="text-[9px] font-bold tracking-widest text-[var(--relax-text-muted)] uppercase">
+            <label className="text-[9px] font-bold tracking-widest text-(--relax-text-muted) uppercase">
               Quality
             </label>
-            <span className="text-[9px] font-mono text-[var(--relax-accent)]">
+            <span className="text-[9px] font-mono text-(--relax-accent)">
               {quality}
             </span>
           </div>
@@ -188,9 +192,9 @@ export const ImageProcessNode = (props: any) => {
             onChange={(e) =>
               updateNodeData(props.id, "quality", Number(e.target.value))
             }
-            className="w-full h-1.5 rounded-full appearance-none cursor-pointer accent-[var(--relax-accent)] bg-[var(--relax-border)]"
+            className="w-full h-1.5 rounded-full appearance-none cursor-pointer accent-(--relax-accent) bg-(--relax-border)"
           />
-          <div className="flex justify-between text-[7px] text-[var(--relax-text-muted)] font-mono">
+          <div className="flex justify-between text-[7px] text-(--relax-text-muted) font-mono">
             <span>1</span>
             <span>100</span>
           </div>

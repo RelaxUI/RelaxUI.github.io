@@ -63,17 +63,17 @@ export const CustomAnimatedEdge = (props: any) => {
         }}
         className={
           isEdgeActive
-            ? "edge-dashed-animate stroke-[var(--relax-accent)]!"
+            ? "edge-dashed-animate stroke-(--relax-accent)!"
             : selected
-              ? "stroke-[var(--relax-accent)]!"
-              : "stroke-[var(--relax-border-hover)]! group-hover:stroke-[var(--relax-accent)]! pointer-events-none"
+              ? "stroke-(--relax-accent)!"
+              : "stroke-(--relax-border-hover)! group-hover:stroke-(--relax-accent)! pointer-events-none"
         }
       />
 
       <EdgeToolbar edgeId={id} x={labelX} y={labelY}>
         <button
           onClick={() => reactFlowInstance.deleteElements({ edges: [{ id }] })}
-          className="bg-[var(--relax-border)] text-red-500 px-1.5 py-0.5 rounded-md text-[10px] font-bold tracking-wider hover:bg-red-500 hover:text-white transition-colors shadow-lg"
+          className="bg-(--relax-border) text-red-500 px-1.5 py-0.5 rounded-md text-[10px] font-bold tracking-wider hover:bg-red-500 hover:text-white transition-colors shadow-lg"
         >
           ✕
         </button>

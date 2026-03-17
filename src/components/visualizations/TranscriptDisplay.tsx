@@ -20,7 +20,7 @@ export function TranscriptDisplay({ data }: { data: any }) {
           return (
             <div key={i} className="flex gap-2 items-start">
               {start !== undefined && (
-                <span className="text-[9px] font-mono text-[var(--relax-accent)] bg-[var(--relax-bg-primary)] px-1.5 py-0.5 rounded shrink-0">
+                <span className="text-[9px] font-mono text-(--relax-accent) bg-(--relax-bg-primary) px-1.5 py-0.5 rounded shrink-0">
                   {formatTime(start)}
                   {end !== undefined && ` - ${formatTime(end)}`}
                 </span>

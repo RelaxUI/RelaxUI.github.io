@@ -76,7 +76,7 @@ export function HighlightedText({
 
     return (
       <div className="flex flex-col gap-2">
-        <div className="text-xs font-mono leading-relaxed text-[var(--relax-text-default)]">
+        <div className="text-xs font-mono leading-relaxed text-(--relax-text-default)">
           {segments}
         </div>
         <div className="flex flex-wrap gap-1.5 mt-1">

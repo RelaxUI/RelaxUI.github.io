@@ -26,7 +26,7 @@ export const ContextMenu = ({ x, y, currentView, onSelect }: ContextMenuProps) =
   return (
     <div
       ref={menuRef}
-      className="fixed z-50 bg-[var(--relax-bg-elevated)] border border-[var(--relax-border-hover)] rounded-lg shadow-2xl w-56 font-mono text-xs"
+      className="fixed z-50 bg-(--relax-bg-elevated) border border-(--relax-border-hover) rounded-lg shadow-2xl w-56 font-mono text-xs"
       style={{
         left: Math.min(x, window.innerWidth - 240),
         top: adjustedTop,

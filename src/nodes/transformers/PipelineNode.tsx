@@ -43,7 +43,7 @@ export const PipelineNode = (props: any) => {
     <BaseNode {...props}>
       <div className="flex flex-col gap-2 w-full nowheel nodrag overflow-hidden">
         <div className="flex flex-col gap-0.5">
-          <label className="text-[9px] text-[var(--relax-text-muted)] font-bold tracking-widest uppercase">
+          <label className="text-[9px] text-(--relax-text-muted) font-bold tracking-widest uppercase">
             TASK
           </label>
           <select
@@ -55,7 +55,7 @@ export const PipelineNode = (props: any) => {
                 updateNodeData(props.id, "model_id", taskDef.defaultModel);
               }
             }}
-            className="w-full bg-[var(--relax-bg-primary)]/60 border border-[var(--relax-border)] rounded px-2 py-1 text-xs font-mono text-white focus:outline-none focus:border-[var(--relax-accent)]"
+            className="w-full bg-(--relax-bg-primary)/60 border border-(--relax-border) rounded px-2 py-1 text-xs font-mono text-white focus:outline-none focus:border-(--relax-accent)"
           >
             {Object.entries(PIPELINE_CATEGORIES).map(([cat, tasks]) => (
               <optgroup key={cat} label={cat}>
@@ -70,7 +70,7 @@ export const PipelineNode = (props: any) => {
         </div>
 
         <div className="flex flex-col gap-0.5">
-          <label className="text-[9px] text-[var(--relax-text-muted)] font-bold tracking-widest uppercase">
+          <label className="text-[9px] text-(--relax-text-muted) font-bold tracking-widest uppercase">
             MODEL ID
           </label>
           <input
@@ -80,13 +80,13 @@ export const PipelineNode = (props: any) => {
               updateNodeData(props.id, "model_id", e.target.value)
             }
             placeholder={PIPELINE_TASKS[task]?.defaultModel ?? "model-id"}
-            className="w-full bg-[var(--relax-bg-primary)]/60 border border-[var(--relax-border)] rounded px-2 py-1 text-xs font-mono text-white focus:outline-none focus:border-[var(--relax-accent)]"
+            className="w-full bg-(--relax-bg-primary)/60 border border-(--relax-border) rounded px-2 py-1 text-xs font-mono text-white focus:outline-none focus:border-(--relax-accent)"
           />
         </div>
 
         <div className="flex gap-2">
           <div className="flex flex-col gap-0.5 flex-1">
-            <label className="text-[9px] text-[var(--relax-text-muted)] font-bold tracking-widest uppercase">
+            <label className="text-[9px] text-(--relax-text-muted) font-bold tracking-widest uppercase">
               DEVICE
             </label>
             <select
@@ -94,7 +94,7 @@ export const PipelineNode = (props: any) => {
               onChange={(e) =>
                 updateNodeData(props.id, "device", e.target.value)
               }
-              className="w-full bg-[var(--relax-bg-primary)]/60 border border-[var(--relax-border)] rounded px-2 py-1 text-xs font-mono text-white focus:outline-none focus:border-[var(--relax-accent)]"
+              className="w-full bg-(--relax-bg-primary)/60 border border-(--relax-border) rounded px-2 py-1 text-xs font-mono text-white focus:outline-none focus:border-(--relax-accent)"
             >
               {DEVICE_OPTIONS.map((d) => (
                 <option key={d} value={d}>
@@ -104,7 +104,7 @@ export const PipelineNode = (props: any) => {
             </select>
           </div>
           <div className="flex flex-col gap-0.5 flex-1">
-            <label className="text-[9px] text-[var(--relax-text-muted)] font-bold tracking-widest uppercase">
+            <label className="text-[9px] text-(--relax-text-muted) font-bold tracking-widest uppercase">
               DTYPE
             </label>
             <select
@@ -112,7 +112,7 @@ export const PipelineNode = (props: any) => {
               onChange={(e) =>
                 updateNodeData(props.id, "dtype", e.target.value || undefined)
               }
-              className="w-full bg-[var(--relax-bg-primary)]/60 border border-[var(--relax-border)] rounded px-2 py-1 text-xs font-mono text-white focus:outline-none focus:border-[var(--relax-accent)]"
+              className="w-full bg-(--relax-bg-primary)/60 border border-(--relax-border) rounded px-2 py-1 text-xs font-mono text-white focus:outline-none focus:border-(--relax-accent)"
             >
               <option value="">auto</option>
               {availableDtypes.map((d) => (

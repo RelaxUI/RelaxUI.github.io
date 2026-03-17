@@ -15,18 +15,18 @@ export function TensorInfo({ data }: { data: any }) {
   return (
     <div className="flex flex-col gap-2 w-full">
       <div className="grid grid-cols-2 gap-x-4 gap-y-1 text-[10px] font-mono">
-        <span className="text-[var(--relax-text-muted)]">SHAPE</span>
-        <span className="text-[var(--relax-accent)]">[{dims.join(", ")}]</span>
-        <span className="text-[var(--relax-text-muted)]">DTYPE</span>
+        <span className="text-(--relax-text-muted)">SHAPE</span>
+        <span className="text-(--relax-accent)">[{dims.join(", ")}]</span>
+        <span className="text-(--relax-text-muted)">DTYPE</span>
         <span className="text-white">{dtype}</span>
-        <span className="text-[var(--relax-text-muted)]">ELEMENTS</span>
+        <span className="text-(--relax-text-muted)">ELEMENTS</span>
         <span className="text-white">{totalElements.toLocaleString()}</span>
       </div>
       <div className="flex flex-col gap-0.5">
-        <span className="text-[8px] text-[var(--relax-text-muted)] font-bold tracking-widest">
+        <span className="text-[8px] text-(--relax-text-muted) font-bold tracking-widest">
           SAMPLE VALUES
         </span>
-        <div className="text-[9px] font-mono text-[var(--relax-text-default)] bg-[var(--relax-bg-primary)] rounded p-1.5 overflow-hidden">
+        <div className="text-[9px] font-mono text-(--relax-text-default) bg-(--relax-bg-primary) rounded p-1.5 overflow-hidden">
           [{sampleValues.join(", ")}
           {totalElements > 6 ? ", ..." : ""}]
         </div>

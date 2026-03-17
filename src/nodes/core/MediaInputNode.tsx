@@ -5,7 +5,12 @@ import { useContext, useState } from "react";
 export const MediaInputNode = (props: any) => {
   const { updateNodeData, setFullscreenImage } = useContext(RuntimeContext)!;
   const mediaType: "image" | "audio" | "video" =
-    props.data.mediaType || (props.type === "audioInput" ? "audio" : props.type === "videoInput" ? "video" : "image");
+    props.data.mediaType ||
+    (props.type === "audioInput"
+      ? "audio"
+      : props.type === "videoInput"
+        ? "video"
+        : "image");
   const isImage = mediaType === "image";
   const isVideo = mediaType === "video";
   const [mode, setMode] = useState<"file" | "url">(
@@ -15,16 +20,16 @@ export const MediaInputNode = (props: any) => {
 
   return (
     <BaseNode {...props}>
-      <div className="flex bg-[var(--relax-bg-primary)]/60 rounded p-1 mb-2 border border-[var(--relax-border)] shrink-0 w-full">
+      <div className="flex bg-(--relax-bg-primary)/60 rounded p-1 mb-2 border border-(--relax-border) shrink-0 w-full">
         <button
           onClick={() => setMode("file")}
-          className={`flex-1 text-[9px] font-bold rounded py-0.5 ${mode === "file" ? "bg-[var(--relax-accent)] text-[var(--relax-bg-primary)]" : "text-[var(--relax-text-muted)] hover:text-white"}`}
+          className={`flex-1 text-[9px] font-bold rounded py-0.5 ${mode === "file" ? "bg-(--relax-accent) text-(--relax-bg-primary)" : "text-(--relax-text-muted) hover:text-white"}`}
         >
           FILE
         </button>
         <button
           onClick={() => setMode("url")}
-          className={`flex-1 text-[9px] font-bold rounded py-0.5 ${mode === "url" ? "bg-[var(--relax-accent)] text-[var(--relax-bg-primary)]" : "text-[var(--relax-text-muted)] hover:text-white"}`}
+          className={`flex-1 text-[9px] font-bold rounded py-0.5 ${mode === "url" ? "bg-(--relax-accent) text-(--relax-bg-primary)" : "text-(--relax-text-muted) hover:text-white"}`}
         >
           URL
         </button>
@@ -42,18 +47,22 @@ export const MediaInputNode = (props: any) => {
                 ? "https://example.com/video.mp4"
                 : "https://example.com/audio.wav"
           }
-          className="w-full bg-[var(--relax-bg-primary)] border border-[var(--relax-border)] rounded p-2 mb-2 text-[10px] font-mono text-white focus:outline-none focus:border-[var(--relax-accent)] nodrag nowheel shrink-0"
+          className="w-full bg-(--relax-bg-primary) border border-(--relax-border) rounded p-2 mb-2 text-[10px] font-mono text-white focus:outline-none focus:border-(--relax-accent) nodrag nowheel shrink-0"
         />
       )}
 
       <div
-        className={`flex-1 w-full flex flex-col items-center justify-center border border-dashed border-[var(--relax-border)] rounded bg-[var(--relax-bg-primary)]/60 transition-colors ${hasValue ? ((isImage || isVideo) ? "min-h-[140px] border-none" : "border-none") : "hover:border-[var(--relax-accent)]"}`}
+        className={`flex-1 w-full flex flex-col items-center justify-center border border-dashed border-(--relax-border) rounded bg-(--relax-bg-primary)/60 transition-colors ${hasValue ? (isImage || isVideo ? "min-h-35 border-none" : "border-none") : "hover:border-(--relax-accent)"}`}
       >
         {!hasValue ? (
           mode === "file" ? (
-            <label className="w-full h-full min-h-[100px] flex flex-col items-center justify-center cursor-pointer">
-              <span className="text-[10px] text-[var(--relax-text-muted)] font-bold tracking-widest">
-                {isImage ? "CLICK TO UPLOAD" : isVideo ? "UPLOAD VIDEO" : "UPLOAD AUDIO"}
+            <label className="w-full h-full min-h-25 flex flex-col items-center justify-center cursor-pointer">
+              <span className="text-[10px] text-(--relax-text-muted) font-bold tracking-widest">
+                {isImage
+                  ? "CLICK TO UPLOAD"
+                  : isVideo
+                    ? "UPLOAD VIDEO"
+                    : "UPLOAD AUDIO"}
               </span>
               <input
                 type="file"
@@ -74,8 +83,12 @@ export const MediaInputNode = (props: any) => {
               />
             </label>
           ) : (
-            <div className="text-[10px] text-[var(--relax-text-muted)] min-h-[100px] flex items-center justify-center">
-              {isImage ? "NO IMAGE URL PROVIDED" : isVideo ? "NO VIDEO URL PROVIDED" : "NO AUDIO URL PROVIDED"}
+            <div className="text-[10px] text-(--relax-text-muted) min-h-25 flex items-center justify-center">
+              {isImage
+                ? "NO IMAGE URL PROVIDED"
+                : isVideo
+                  ? "NO VIDEO URL PROVIDED"
+                  : "NO AUDIO URL PROVIDED"}
             </div>
           )
         ) : isVideo ? (
@@ -83,11 +96,11 @@ export const MediaInputNode = (props: any) => {
             <video
               src={props.data.value}
               controls
-              className="w-full h-full object-contain max-h-[300px] rounded nodrag nowheel"
+              className="w-full h-full object-contain max-h-75 rounded nodrag nowheel"
             />
             <button
               onClick={() => updateNodeData(props.id, "value", "")}
-              className="absolute top-2 right-2 bg-[var(--relax-bg-primary)]/90 text-white border border-[var(--relax-border-hover)] rounded px-3 py-1.5 text-[9px] font-bold opacity-0 group-hover/vid:opacity-100 hover:bg-red-500 transition-all shadow-lg"
+              className="absolute top-2 right-2 bg-(--relax-bg-primary)/90 text-white border border-(--relax-border-hover) rounded px-3 py-1.5 text-[9px] font-bold opacity-0 group-hover/vid:opacity-100 hover:bg-red-500 transition-all shadow-lg"
             >
               CLEAR
             </button>
@@ -97,12 +110,12 @@ export const MediaInputNode = (props: any) => {
             <img
               src={props.data.value}
               alt="Input"
-              className="w-full h-full object-contain max-h-[300px] cursor-zoom-in rounded"
+              className="w-full h-full object-contain max-h-75 cursor-zoom-in rounded"
               onClick={() => setFullscreenImage(props.data.value)}
             />
             <button
               onClick={() => updateNodeData(props.id, "value", "")}
-              className="absolute top-2 right-2 bg-[var(--relax-bg-primary)]/90 text-white border border-[var(--relax-border-hover)] rounded px-3 py-1.5 text-[9px] font-bold opacity-0 group-hover/img:opacity-100 hover:bg-red-500 transition-all shadow-lg"
+              className="absolute top-2 right-2 bg-(--relax-bg-primary)/90 text-white border border-(--relax-border-hover) rounded px-3 py-1.5 text-[9px] font-bold opacity-0 group-hover/img:opacity-100 hover:bg-red-500 transition-all shadow-lg"
             >
               CLEAR
             </button>
@@ -114,7 +127,7 @@ export const MediaInputNode = (props: any) => {
               src={props.data.value}
               className="w-full h-8 nodrag nowheel"
             />
-            <span className="text-[10px] text-[var(--relax-accent)] font-mono truncate max-w-[180px]">
+            <span className="text-[10px] text-(--relax-accent) font-mono truncate max-w-45">
               {props.data.fileName || "Audio loaded"}
             </span>
             <button
@@ -122,7 +135,7 @@ export const MediaInputNode = (props: any) => {
                 updateNodeData(props.id, "value", null);
                 updateNodeData(props.id, "fileName", "");
               }}
-              className="text-[9px] text-red-400 hover:text-red-300 font-bold bg-[var(--relax-bg-primary)] border border-red-500/30 rounded px-3 py-1 transition-colors"
+              className="text-[9px] text-red-400 hover:text-red-300 font-bold bg-(--relax-bg-primary) border border-red-500/30 rounded px-3 py-1 transition-colors"
             >
               CLEAR
             </button>

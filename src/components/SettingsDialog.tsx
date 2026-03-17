@@ -19,29 +19,31 @@ export const SettingsDialog = ({ onClose }: SettingsDialogProps) => {
   }, [onClose]);
 
   const sectionHeadingClass =
-    "text-[10px] text-[var(--relax-accent)] font-bold tracking-widest uppercase mb-3";
+    "text-[10px] text-(--relax-accent) font-bold tracking-widest uppercase mb-3";
   const labelClass =
-    "text-[10px] text-[var(--relax-text-muted)] font-bold tracking-wider uppercase block mb-1.5";
+    "text-[10px] text-(--relax-text-muted) font-bold tracking-wider uppercase block mb-1.5";
   const inputClass =
-    "w-full bg-[var(--relax-bg-primary)] border border-[var(--relax-border)] rounded px-3 py-2 text-xs text-white font-mono focus:border-[var(--relax-accent)] focus:outline-none placeholder:text-[var(--relax-text-muted)]";
+    "w-full bg-(--relax-bg-primary) border border-(--relax-border) rounded px-3 py-2 text-xs text-white font-mono focus:border-(--relax-accent) focus:outline-none placeholder:text-(--relax-text-muted)";
 
   return (
     <div
       role="dialog"
       aria-modal="true"
-      className="fixed inset-0 z-110 bg-[var(--relax-bg-primary)]/80 backdrop-blur-sm flex items-center justify-center p-4"
+      className="fixed inset-0 z-110 bg-(--relax-bg-primary)/80 backdrop-blur-sm flex items-center justify-center p-4"
       onClick={onClose}
     >
       <div
-        className="bg-[var(--relax-bg-elevated)] border border-[var(--relax-border-hover)] rounded-xl shadow-2xl w-full max-w-[480px] max-h-[85vh] flex flex-col overflow-hidden"
+        className="bg-(--relax-bg-elevated) border border-(--relax-border-hover) rounded-xl shadow-2xl w-full max-w-120 max-h-[85vh] flex flex-col overflow-hidden"
         onClick={(e) => e.stopPropagation()}
       >
         {/* Header */}
-        <div className="flex items-center justify-between px-6 py-4 border-b border-[var(--relax-border)]">
-          <h2 className="text-white text-sm font-bold tracking-widest">SETTINGS</h2>
+        <div className="flex items-center justify-between px-6 py-4 border-b border-(--relax-border)">
+          <h2 className="text-white text-sm font-bold tracking-widest">
+            SETTINGS
+          </h2>
           <button
             onClick={onClose}
-            className="text-[var(--relax-text-muted)] hover:text-white transition-colors text-lg leading-none"
+            className="text-(--relax-text-muted) hover:text-white transition-colors text-lg leading-none"
           >
             &times;
           </button>
@@ -63,13 +65,14 @@ export const SettingsDialog = ({ onClose }: SettingsDialogProps) => {
               />
               <button
                 onClick={() => setShowToken((v) => !v)}
-                className="px-2 py-1 text-[9px] font-bold bg-[var(--relax-border)] border border-[var(--relax-border-hover)] rounded text-[var(--relax-text-default)] hover:text-white transition-colors"
+                className="px-2 py-1 text-[9px] font-bold bg-(--relax-border) border border-(--relax-border-hover) rounded text-(--relax-text-default) hover:text-white transition-colors"
               >
                 {showToken ? "HIDE" : "SHOW"}
               </button>
             </div>
-            <p className="text-[9px] text-[var(--relax-text-muted)] mt-1.5">
-              Required for gated models (e.g. Llama, RMBG). Get one at huggingface.co/settings/tokens
+            <p className="text-[9px] text-(--relax-text-muted) mt-1.5">
+              Required for gated models (e.g. Llama, RMBG). Get one at
+              huggingface.co/settings/tokens
             </p>
           </section>
 
@@ -97,9 +100,11 @@ export const SettingsDialog = ({ onClose }: SettingsDialogProps) => {
                   type="checkbox"
                   checked={settings.autoSave}
                   onChange={(e) => updateSetting("autoSave", e.target.checked)}
-                  className="accent-[var(--relax-accent)]"
+                  className="accent-(--relax-accent)"
                 />
-                <span className="text-xs text-[var(--relax-text-default)]">Auto-save workflow</span>
+                <span className="text-xs text-(--relax-text-default)">
+                  Auto-save workflow
+                </span>
               </label>
 
               {settings.autoSave && (
@@ -111,7 +116,14 @@ export const SettingsDialog = ({ onClose }: SettingsDialogProps) => {
                     onChange={(e) =>
                       updateSetting(
                         "autoSaveDebounceMs",
-                        Math.max(500, Math.min(30000, Number(e.target.value) || DEFAULTS.autoSaveDebounceMs)),
+                        Math.max(
+                          500,
+                          Math.min(
+                            30000,
+                            Number(e.target.value) ||
+                              DEFAULTS.autoSaveDebounceMs,
+                          ),
+                        ),
                       )
                     }
                     min={500}
@@ -119,7 +131,7 @@ export const SettingsDialog = ({ onClose }: SettingsDialogProps) => {
                     step={100}
                     className={inputClass}
                   />
-                  <p className="text-[9px] text-[var(--relax-text-muted)] mt-1">
+                  <p className="text-[9px] text-(--relax-text-muted) mt-1">
                     Debounce delay before saving changes (500–30000ms)
                   </p>
                 </div>
@@ -133,7 +145,13 @@ export const SettingsDialog = ({ onClose }: SettingsDialogProps) => {
                   onChange={(e) =>
                     updateSetting(
                       "undoHistorySize",
-                      Math.max(10, Math.min(500, Number(e.target.value) || DEFAULTS.undoHistorySize)),
+                      Math.max(
+                        10,
+                        Math.min(
+                          500,
+                          Number(e.target.value) || DEFAULTS.undoHistorySize,
+                        ),
+                      ),
                     )
                   }
                   min={10}
@@ -141,7 +159,7 @@ export const SettingsDialog = ({ onClose }: SettingsDialogProps) => {
                   step={10}
                   className={inputClass}
                 />
-                <p className="text-[9px] text-[var(--relax-text-muted)] mt-1">
+                <p className="text-[9px] text-(--relax-text-muted) mt-1">
                   Maximum number of undo snapshots to keep (10–500)
                 </p>
               </div>

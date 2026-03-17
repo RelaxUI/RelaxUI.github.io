@@ -4,29 +4,50 @@ import { useContext, useEffect, useState } from "react";
 
 /** Renders a blob: URL by fetching its Content-Type to pick the right element. */
 function BlobPreview({ src }: { src: string }) {
-  const [type, setType] = useState<"image" | "audio" | "video" | "text" | null>(null);
+  const [type, setType] = useState<"image" | "audio" | "video" | "text" | null>(
+    null,
+  );
   const [text, setText] = useState("");
 
   useEffect(() => {
     let cancelled = false;
-    fetch(src).then(async (res) => {
-      if (cancelled) return;
-      const ct = res.headers.get("content-type") || "";
-      if (ct.startsWith("image")) setType("image");
-      else if (ct.startsWith("audio")) setType("audio");
-      else if (ct.startsWith("video")) setType("video");
-      else if (ct.startsWith("text") || ct.includes("json")) {
-        setText(await res.text());
-        setType("text");
-      } else setType("image"); // best-effort default
-    }).catch(() => setType("image"));
-    return () => { cancelled = true; };
+    fetch(src)
+      .then(async (res) => {
+        if (cancelled) return;
+        const ct = res.headers.get("content-type") || "";
+        if (ct.startsWith("image")) setType("image");
+        else if (ct.startsWith("audio")) setType("audio");
+        else if (ct.startsWith("video")) setType("video");
+        else if (ct.startsWith("text") || ct.includes("json")) {
+          setText(await res.text());
+          setType("text");
+        } else setType("image"); // best-effort default
+      })
+      .catch(() => setType("image"));
+    return () => {
+      cancelled = true;
+    };
   }, [src]);
 
-  if (!type) return <span className="opacity-50 italic text-[10px]">Loading...</span>;
-  if (type === "image") return <img src={src} alt="Preview" className="max-w-full max-h-full rounded object-contain" />;
+  if (!type)
+    return <span className="opacity-50 italic text-[10px]">Loading...</span>;
+  if (type === "image")
+    return (
+      <img
+        src={src}
+        alt="Preview"
+        className="max-w-full max-h-full rounded object-contain"
+      />
+    );
   if (type === "audio") return <audio controls src={src} className="w-full" />;
-  if (type === "video") return <video controls src={src} className="max-w-full max-h-full rounded object-contain" />;
+  if (type === "video")
+    return (
+      <video
+        controls
+        src={src}
+        className="max-w-full max-h-full rounded object-contain"
+      />
+    );
   return <span className="whitespace-pre-wrap break-all">{text}</span>;
 }
 
@@ -46,13 +67,25 @@ function renderPreview(data: any): React.ReactNode {
 
   if (typeof data === "string") {
     if (data.startsWith("data:image")) {
-      return <img src={data} alt="Preview" className="max-w-full max-h-full rounded object-contain" />;
+      return (
+        <img
+          src={data}
+          alt="Preview"
+          className="max-w-full max-h-full rounded object-contain"
+        />
+      );
     }
     if (data.startsWith("data:audio")) {
       return <audio controls src={data} className="w-full" />;
     }
     if (data.startsWith("data:video")) {
-      return <video controls src={data} className="max-w-full max-h-full rounded object-contain" />;
+      return (
+        <video
+          controls
+          src={data}
+          className="max-w-full max-h-full rounded object-contain"
+        />
+      );
     }
     if (data.startsWith("blob:")) {
       return <BlobPreview src={data} />;
@@ -76,14 +109,27 @@ function renderPreview(data: any): React.ReactNode {
 }
 
 const statusBadges: Record<string, { label: string; color: string }> = {
-  pending: { label: "Waiting...", color: "text-yellow-400 border-yellow-400/30 bg-yellow-400/10" },
-  approved: { label: "Approved", color: "text-green-400 border-green-400/30 bg-green-400/10" },
-  reworking: { label: "Reworking...", color: "text-yellow-400 border-yellow-400/30 bg-yellow-400/10" },
-  cancelled: { label: "Cancelled", color: "text-red-400 border-red-400/30 bg-red-400/10" },
+  pending: {
+    label: "Waiting...",
+    color: "text-yellow-400 border-yellow-400/30 bg-yellow-400/10",
+  },
+  approved: {
+    label: "Approved",
+    color: "text-green-400 border-green-400/30 bg-green-400/10",
+  },
+  reworking: {
+    label: "Reworking...",
+    color: "text-yellow-400 border-yellow-400/30 bg-yellow-400/10",
+  },
+  cancelled: {
+    label: "Cancelled",
+    color: "text-red-400 border-red-400/30 bg-red-400/10",
+  },
 };
 
 export const ReviewNode = (props: any) => {
-  const { displayData, resolveApproval, rejectApproval } = useContext(RuntimeContext)!;
+  const { displayData, resolveApproval, rejectApproval } =
+    useContext(RuntimeContext)!;
   const reviewData = displayData[props.id] as
     | { data: any; status: string }
     | undefined;
@@ -96,7 +142,9 @@ export const ReviewNode = (props: any) => {
   const isPending = status === "pending";
 
   const handleEdit = () => {
-    setEditValue(typeof data === "string" ? data : JSON.stringify(data, null, 2));
+    setEditValue(
+      typeof data === "string" ? data : JSON.stringify(data, null, 2),
+    );
     setEditing(true);
   };
 
@@ -110,12 +158,12 @@ export const ReviewNode = (props: any) => {
   return (
     <BaseNode {...props}>
       {/* Preview area */}
-      <div className="nowheel nodrag flex-1 w-full bg-[var(--relax-bg-primary)]/60 border border-[var(--relax-border)] rounded p-2 text-xs font-mono text-white overflow-y-auto custom-scrollbar min-h-0">
+      <div className="nowheel nodrag flex-1 w-full bg-(--relax-bg-primary)/60 border border-(--relax-border) rounded p-2 text-xs font-mono text-white overflow-y-auto custom-scrollbar min-h-0">
         {reviewData == null ? (
           <span className="opacity-30">Waiting for data...</span>
         ) : editing ? (
           <textarea
-            className="nowheel nodrag w-full h-full min-h-[80px] bg-transparent text-xs font-mono text-white focus:outline-none resize-none"
+            className="nowheel nodrag w-full h-full min-h-20 bg-transparent text-xs font-mono text-white focus:outline-none resize-none"
             value={editValue}
             onChange={(e) => setEditValue(e.target.value)}
             autoFocus
@@ -181,7 +229,7 @@ export const ReviewNode = (props: any) => {
           </button>
           <button
             onClick={() => setEditing(false)}
-            className="flex-1 text-[9px] font-bold tracking-wider uppercase bg-[var(--relax-border)]/50 text-[var(--relax-text-muted)] border border-[var(--relax-border)] rounded px-1.5 py-1 hover:text-white transition-colors"
+            className="flex-1 text-[9px] font-bold tracking-wider uppercase bg-(--relax-border)/50 text-(--relax-text-muted) border border-(--relax-border) rounded px-1.5 py-1 hover:text-white transition-colors"
           >
             Back
           </button>

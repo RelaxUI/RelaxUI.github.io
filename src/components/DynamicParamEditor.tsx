@@ -15,7 +15,7 @@ export const DynamicParamEditor = ({
     <div className="space-y-2 w-full">
       {Object.entries(schema).map(([key, def]) => (
         <div key={key} className="flex flex-col gap-0.5">
-          <label className="text-[9px] text-[var(--relax-text-muted)] font-bold tracking-widest uppercase">
+          <label className="text-[9px] text-(--relax-text-muted) font-bold tracking-widest uppercase">
             {def.label}
           </label>
           {def.type === "number" && (
@@ -26,14 +26,14 @@ export const DynamicParamEditor = ({
               step={def.step ?? 1}
               value={values[key] ?? def.default}
               onChange={(e) => onChange(key, parseFloat(e.target.value))}
-              className="w-full bg-[var(--relax-bg-primary)]/60 border border-[var(--relax-border)] rounded px-2 py-1 text-xs font-mono text-white focus:outline-none focus:border-[var(--relax-accent)] nowheel nodrag"
+              className="w-full bg-(--relax-bg-primary)/60 border border-(--relax-border) rounded px-2 py-1 text-xs font-mono text-white focus:outline-none focus:border-(--relax-accent) nowheel nodrag"
             />
           )}
           {def.type === "boolean" && (
             <button
               type="button"
               onClick={() => onChange(key, !(values[key] ?? def.default))}
-              className={`relative w-8 h-4 rounded-full transition-colors shrink-0 ${(values[key] ?? def.default) ? "bg-[var(--relax-accent)]" : "bg-[var(--relax-border)]"}`}
+              className={`relative w-8 h-4 rounded-full transition-colors shrink-0 ${(values[key] ?? def.default) ? "bg-(--relax-accent)" : "bg-(--relax-border)"}`}
             >
               <div
                 className={`absolute top-0.5 w-3 h-3 rounded-full bg-white transition-transform ${(values[key] ?? def.default) ? "translate-x-4" : "translate-x-0.5"}`}
@@ -44,7 +44,7 @@ export const DynamicParamEditor = ({
             <select
               value={values[key] ?? def.default}
               onChange={(e) => onChange(key, e.target.value)}
-              className="w-full bg-[var(--relax-bg-primary)]/60 border border-[var(--relax-border)] rounded px-2 py-1 text-xs font-mono text-white focus:outline-none focus:border-[var(--relax-accent)] nodrag"
+              className="w-full bg-(--relax-bg-primary)/60 border border-(--relax-border) rounded px-2 py-1 text-xs font-mono text-white focus:outline-none focus:border-(--relax-accent) nodrag"
             >
               {def.options.map((opt) => (
                 <option key={opt} value={opt}>
@@ -58,7 +58,7 @@ export const DynamicParamEditor = ({
               type="text"
               value={values[key] ?? def.default ?? ""}
               onChange={(e) => onChange(key, e.target.value)}
-              className="w-full bg-[var(--relax-bg-primary)]/60 border border-[var(--relax-border)] rounded px-2 py-1 text-xs font-mono text-white focus:outline-none focus:border-[var(--relax-accent)] nodrag"
+              className="w-full bg-(--relax-bg-primary)/60 border border-(--relax-border) rounded px-2 py-1 text-xs font-mono text-white focus:outline-none focus:border-(--relax-accent) nodrag"
             />
           )}
         </div>

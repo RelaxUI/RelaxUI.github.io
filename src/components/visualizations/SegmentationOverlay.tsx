@@ -18,7 +18,7 @@ export function SegmentationOverlay({
 
   return (
     <div className="flex flex-col gap-2 w-full">
-      <div className="text-[9px] font-bold text-[var(--relax-text-muted)] tracking-widest">
+      <div className="text-[9px] font-bold text-(--relax-text-muted) tracking-widest">
         SEGMENTS DETECTED: {data.length}
       </div>
       <div className="flex flex-wrap gap-1.5">
@@ -35,7 +35,7 @@ export function SegmentationOverlay({
                 style={{ backgroundColor: `rgb(${r},${g},${b})` }}
               />
               <span className="text-white">{seg.label}</span>
-              <span className="text-[var(--relax-text-muted)]">
+              <span className="text-(--relax-text-muted)">
                 {(seg.score * 100).toFixed(0)}%
               </span>
             </div>

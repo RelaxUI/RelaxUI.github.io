@@ -185,7 +185,7 @@ export function FlowEditor() {
         stopNode: runner.stopNode,
       }}
     >
-      <div className="w-full h-screen flex flex-col bg-(--relax-bg-primary) font-sans overflow-hidden select-none text-[var(--relax-text-default)]">
+      <div className="w-full h-screen flex flex-col bg-(--relax-bg-primary) font-sans overflow-hidden select-none text-(--relax-text-default)">
         <style>{`
           @import url('https://fonts.googleapis.com/css2?family=Inter:wght@400;600;700&family=JetBrains+Mono:wght@400;700&display=swap');
           .font-sans { font-family: 'Inter', sans-serif; }
@@ -251,7 +251,7 @@ export function FlowEditor() {
             <Background color="var(--relax-border)" gap={40} />
             <Controls
               showInteractive={false}
-              className="!bg-[var(--relax-bg-elevated)] !border !border-[var(--relax-border)] !rounded-lg overflow-hidden shadow-[0_4px_15px_rgba(0,0,0,0.5)] [&>button]:!border-0 [&>button]:!border-b [&>button]:!border-solid [&>button]:!border-b-[var(--relax-border)] [&>button]:!bg-transparent [&>button]:!fill-[var(--relax-text-muted)] [&>button]:transition-all [&>button]:duration-200 [&>button:hover]:!bg-[var(--relax-border)] [&>button:hover]:!fill-[var(--relax-accent)] [&>button:last-child]:!border-b-0"
+              className="bg-(--relax-bg-elevated)! border! border-(--relax-border)! rounded-lg! overflow-hidden shadow-[0_4px_15px_rgba(0,0,0,0.5)] [&>button]:border-0! [&>button]:border-b! [&>button]:border-solid! [&>button]:border-b-(--relax-border)! [&>button]:bg-transparent! [&>button]:fill-(--relax-text-muted)! [&>button]:transition-all [&>button]:duration-200 [&>button:hover]:bg-(--relax-border)! [&>button:hover]:fill-(--relax-accent)! [&>button:last-child]:border-b-0!"
             />
             {showMiniMap && (
               <MiniMap
@@ -263,7 +263,7 @@ export function FlowEditor() {
                       : "#3f4b59"
                 }
                 maskColor="rgba(0, 0, 0, 0.7)"
-                className="!bg-[var(--relax-bg-elevated)] !border !border-[var(--relax-border)] !rounded-lg"
+                className="bg-(--relax-bg-elevated)! border! border-(--relax-border)! rounded-lg!"
               />
             )}
           </ReactFlow>
@@ -271,11 +271,11 @@ export function FlowEditor() {
           {/* MiniMap toggle — icon button matching zoom controls style */}
           <button
             onClick={() => setShowMiniMap((v) => !v)}
-            className="absolute bottom-[100px] left-[15px] z-20 w-[26px] h-[26px] flex items-center justify-center bg-[var(--relax-bg-elevated)] border border-[var(--relax-border)] rounded-lg shadow-[0_4px_15px_rgba(0,0,0,0.5)] transition-all duration-200 hover:bg-[var(--relax-border)] group/map"
+            className="absolute bottom-25 left-3.75 z-20 w-6.5 h-6.5 flex items-center justify-center bg-(--relax-bg-elevated) border border-(--relax-border) rounded-lg shadow-[0_4px_15px_rgba(0,0,0,0.5)] transition-all duration-200 hover:bg-(--relax-border) group/map"
             title={showMiniMap ? "Hide MiniMap" : "Show MiniMap"}
           >
             <svg
-              className={`w-3.5 h-3.5 transition-colors duration-200 group-hover/map:fill-[var(--relax-accent)] ${showMiniMap ? "fill-[var(--relax-accent)]" : "fill-[var(--relax-text-muted)]"}`}
+              className={`w-3.5 h-3.5 transition-colors duration-200 group-hover/map:fill-(--relax-accent) ${showMiniMap ? "fill-(--relax-accent)" : "fill-(--relax-text-muted)"}`}
               viewBox="0 0 24 24"
             >
               <path d="M20.5 3l-.16.03L15 5.1 9 3 3.36 4.9c-.21.07-.36.25-.36.48V20.5c0 .28.22.5.5.5l.16-.03L9 18.9l6 2.1 5.64-1.9c.21-.07.36-.25.36-.48V3.5c0-.28-.22-.5-.5-.5zM15 19l-6-2.11V5l6 2.11V19z" />

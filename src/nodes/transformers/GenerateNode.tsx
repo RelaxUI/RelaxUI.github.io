@@ -11,7 +11,7 @@ export const GenerateNode = (props: any) => {
     <BaseNode {...props}>
       <div className="flex flex-col gap-2 w-full nowheel nodrag overflow-hidden">
         <div className="flex items-center justify-between">
-          <label className="text-[9px] text-[var(--relax-text-muted)] font-bold tracking-widest uppercase">
+          <label className="text-[9px] text-(--relax-text-muted) font-bold tracking-widest uppercase">
             STREAMING
           </label>
           <button
@@ -19,7 +19,7 @@ export const GenerateNode = (props: any) => {
             onClick={() =>
               updateNodeData(props.id, "useStreamer", !props.data.useStreamer)
             }
-            className={`relative w-8 h-4 rounded-full transition-colors shrink-0 ${props.data.useStreamer ? "bg-[var(--relax-accent)]" : "bg-[var(--relax-border)]"}`}
+            className={`relative w-8 h-4 rounded-full transition-colors shrink-0 ${props.data.useStreamer ? "bg-(--relax-accent)" : "bg-(--relax-border)"}`}
           >
             <div
               className={`absolute top-0.5 w-3 h-3 rounded-full bg-white transition-transform ${props.data.useStreamer ? "translate-x-4" : "translate-x-0.5"}`}
