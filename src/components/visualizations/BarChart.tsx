@@ -1,6 +1,6 @@
 const COLORS = [
-  "#00e5ff",
-  "#00ffaa",
+  "var(--relax-accent)",
+  "var(--relax-success)",
   "#ff6b6b",
   "#ffd93d",
   "#6c5ce7",

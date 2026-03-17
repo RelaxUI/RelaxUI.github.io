@@ -13,6 +13,8 @@ export const DEFAULTS = {
   edgeAnimationMs: 600,
   audioSampleRate: 16000,
   maskedLmTopK: 5,
+  autoSaveDebounceMs: 1500,
+  undoHistorySize: 50,
 } as const;
 
 /** Auto-detect best available device with fallback, respecting user settings */

@@ -19,11 +19,11 @@ export const MacroNode = (props: any) => {
       <form className="nowheel nodrag flex flex-col w-full h-full p-2 gap-3 overflow-y-auto custom-scrollbar" onSubmit={(e) => e.preventDefault()}>
         {paramNodes.map((pNode) => (
           <div key={pNode.id} className="flex flex-col gap-1">
-            <label className="text-[10px] text-[#5a6b7c] uppercase font-bold tracking-widest">
+            <label className="text-[10px] text-[var(--relax-text-muted)] uppercase font-bold tracking-widest">
               {pNode.data.param}
             </label>
             <input
-              className="nowheel nodrag w-full bg-[#0b0e14]/60 border border-[#1f2630] rounded p-2 text-xs font-mono text-white focus:outline-none focus:border-[#00e5ff]"
+              className="nowheel nodrag w-full bg-[var(--relax-bg-primary)]/60 border border-[var(--relax-border)] rounded p-2 text-xs font-mono text-white focus:outline-none focus:border-[var(--relax-accent)]"
               value={props.data[pNode.data.param] || ""}
               onChange={(e) =>
                 updateNodeData(props.id, pNode.data.param, e.target.value)

@@ -58,22 +58,22 @@ export const CustomAnimatedEdge = (props: any) => {
         style={{
           ...style,
           strokeWidth: isHighlighted ? 3 : 2,
-          stroke: isHighlighted ? "#00e5ff" : "#2a323d",
+          stroke: isHighlighted ? "var(--relax-accent)" : "var(--relax-border-hover)",
           transition: "stroke 0.3s",
         }}
         className={
           isEdgeActive
-            ? "edge-dashed-animate stroke-[#00e5ff]!"
+            ? "edge-dashed-animate stroke-[var(--relax-accent)]!"
             : selected
-              ? "stroke-[#00e5ff]!"
-              : "stroke-[#2a323d]! group-hover:stroke-[#00e5ff]! pointer-events-none"
+              ? "stroke-[var(--relax-accent)]!"
+              : "stroke-[var(--relax-border-hover)]! group-hover:stroke-[var(--relax-accent)]! pointer-events-none"
         }
       />
 
       <EdgeToolbar edgeId={id} x={labelX} y={labelY}>
         <button
           onClick={() => reactFlowInstance.deleteElements({ edges: [{ id }] })}
-          className="bg-[#1f2630] text-red-500 px-1.5 py-0.5 rounded-md text-[10px] font-bold tracking-wider hover:bg-red-500 hover:text-white transition-colors shadow-lg"
+          className="bg-[var(--relax-border)] text-red-500 px-1.5 py-0.5 rounded-md text-[10px] font-bold tracking-wider hover:bg-red-500 hover:text-white transition-colors shadow-lg"
         >
           ✕
         </button>
@@ -83,8 +83,8 @@ export const CustomAnimatedEdge = (props: any) => {
         <circle
           key={activeData?.ts}
           r="5"
-          fill="#00e5ff"
-          filter="drop-shadow(0 0 5px #00e5ff)"
+          fill="var(--relax-accent)"
+          filter="drop-shadow(0 0 5px var(--relax-accent))"
         >
           <animateMotion
             dur="0.6s"

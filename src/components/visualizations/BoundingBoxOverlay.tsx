@@ -1,8 +1,14 @@
 import { useEffect, useRef } from "react";
 
+/** Resolve a CSS custom property to its computed value for canvas use */
+function cssVar(name: string): string {
+  return getComputedStyle(document.documentElement).getPropertyValue(name).trim();
+}
+
 const COLORS = [
-  "#00e5ff", "#00ffaa", "#ff6b6b", "#ffd93d", "#6c5ce7",
-  "#a29bfe", "#fd79a8", "#00b894", "#e17055", "#0984e3",
+  () => cssVar("--relax-accent"), () => cssVar("--relax-success"),
+  () => "#ff6b6b", () => "#ffd93d", () => "#6c5ce7",
+  () => "#a29bfe", () => "#fd79a8", () => "#00b894", () => "#e17055", () => "#0984e3",
 ];
 
 interface Detection {
@@ -49,7 +55,7 @@ export function BoundingBoxOverlay({
 
       for (const det of detections) {
         if (!labelColorMap.has(det.label)) {
-          labelColorMap.set(det.label, COLORS[colorIdx % COLORS.length]!);
+          labelColorMap.set(det.label, COLORS[colorIdx % COLORS.length]!());
           colorIdx++;
         }
         const color = labelColorMap.get(det.label)!;
@@ -69,7 +75,7 @@ export function BoundingBoxOverlay({
         const lh = 14;
         ctx.fillStyle = color;
         ctx.fillRect(bx, by - lh, tm.width + 6, lh);
-        ctx.fillStyle = "#0b0e14";
+        ctx.fillStyle = cssVar("--relax-bg-primary");
         ctx.fillText(label, bx + 3, by - 3);
       }
     };

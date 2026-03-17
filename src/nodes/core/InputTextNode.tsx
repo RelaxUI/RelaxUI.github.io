@@ -24,7 +24,7 @@ export const InputTextNode = (props: any) => {
     <BaseNode {...props}>
       <textarea
         ref={textareaRef}
-        className="nowheel nodrag flex-1 w-full bg-[#0b0e14]/60 border border-[#1f2630] rounded p-2 text-xs font-mono text-white focus:outline-none focus:border-[#00e5ff] resize-none custom-scrollbar"
+        className="nowheel nodrag flex-1 w-full bg-[var(--relax-bg-primary)]/60 border border-[var(--relax-border)] rounded p-2 text-xs font-mono text-white focus:outline-none focus:border-[var(--relax-accent)] resize-none custom-scrollbar"
         defaultValue={props.data.value || ""}
         onChange={handleChange}
       />

@@ -1,3 +1,4 @@
+import { readSetting } from "@/hooks/useSettings.ts";
 import type { FlowNode } from "@/types.ts";
 import type { Edge } from "@xyflow/react";
 import { useCallback, useRef, useState } from "react";
@@ -6,8 +7,6 @@ interface Snapshot {
   nodes: FlowNode[];
   edges: Edge[];
 }
-
-const MAX_HISTORY = 50;
 
 export function useUndoRedo(
   getNodes: () => FlowNode[],
@@ -28,9 +27,10 @@ export function useUndoRedo(
         nodes: JSON.parse(JSON.stringify(getNodes())),
         edges: JSON.parse(JSON.stringify(getEdges())),
       };
+      const maxHistory = readSetting("undoHistorySize");
       const idx = historyIndex + 1;
       history.current = [...history.current.slice(0, idx), snap].slice(
-        -MAX_HISTORY,
+        -maxHistory,
       );
       setHistoryIndex(history.current.length - 1);
     }, 500);

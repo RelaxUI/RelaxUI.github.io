@@ -49,12 +49,12 @@ export const NodeMenuList = ({ currentView, onSelect }: NodeMenuListProps) => {
   return (
     <>
       {/* Search */}
-      <div className="p-2 border-b border-[#1f2630] shrink-0">
+      <div className="p-2 border-b border-[var(--relax-border)] shrink-0">
         <input
           autoFocus
           value={search}
           onChange={(e) => setSearch(e.target.value)}
-          className="w-full bg-[#0b0e14] border border-[#1f2630] rounded px-2.5 py-1.5 text-[11px] text-white font-mono focus:border-[#00e5ff] focus:outline-none placeholder:text-[#5a6b7c]"
+          className="w-full bg-[var(--relax-bg-primary)] border border-[var(--relax-border)] rounded px-2.5 py-1.5 text-[11px] text-white font-mono focus:border-[var(--relax-accent)] focus:outline-none placeholder:text-[var(--relax-text-muted)]"
           placeholder="Search nodes..."
         />
       </div>
@@ -65,20 +65,20 @@ export const NodeMenuList = ({ currentView, onSelect }: NodeMenuListProps) => {
           /* ── Search results ── */
           <div>
             {filteredItems.length === 0 && (
-              <div className="px-4 py-4 text-[#5a6b7c] text-center text-[11px]">
+              <div className="px-4 py-4 text-[var(--relax-text-muted)] text-center text-[11px]">
                 No results
               </div>
             )}
             {filteredItems.map((item) => (
               <div
                 key={item.type}
-                className="pl-5 pr-3 py-1.5 hover:bg-[#1f2630] hover:text-[#00e5ff] cursor-pointer flex justify-between items-center gap-2 text-[11px] text-[#c8d1dc]"
+                className="pl-5 pr-3 py-1.5 hover:bg-[var(--relax-border)] hover:text-[var(--relax-accent)] cursor-pointer flex justify-between items-center gap-2 text-[11px] text-[var(--relax-text-default)]"
                 onClick={() => onSelect(item.type)}
               >
                 <span className="truncate" title={item.label}>
                   {item.label}
                 </span>
-                <span className="text-[8px] text-[#5a6b7c] shrink-0">
+                <span className="text-[8px] text-[var(--relax-text-muted)] shrink-0">
                   {item.subcategory || item.category}
                 </span>
               </div>
@@ -99,27 +99,27 @@ export const NodeMenuList = ({ currentView, onSelect }: NodeMenuListProps) => {
                 <div key={cat}>
                   {/* Category header */}
                   <div
-                    className="px-3 py-1.5 hover:bg-[#1f2630] cursor-pointer flex justify-between items-center"
+                    className="px-3 py-1.5 hover:bg-[var(--relax-border)] cursor-pointer flex justify-between items-center"
                     onClick={() => setOpenCategory(isOpen ? null : cat)}
                   >
-                    <span className="text-[10px] font-bold tracking-wider text-[#e2e8f0] uppercase">
+                    <span className="text-[10px] font-bold tracking-wider text-[var(--relax-text-bright)] uppercase">
                       {cat}
                     </span>
                     <div className="flex items-center gap-1.5">
-                      <span className="text-[8px] text-[#5a6b7c] font-mono">{count}</span>
-                      <span className="text-[9px] text-[#5a6b7c]">
+                      <span className="text-[8px] text-[var(--relax-text-muted)] font-mono">{count}</span>
+                      <span className="text-[9px] text-[var(--relax-text-muted)]">
                         {isOpen ? "▾" : "▸"}
                       </span>
                     </div>
                   </div>
 
                   {isOpen && (
-                    <div className="bg-[#0b0e14]/30">
+                    <div className="bg-[var(--relax-bg-primary)]/30">
                       {/* Direct items (no subcategory) */}
                       {directItems.map((item) => (
                         <div
                           key={item.type}
-                          className="pl-5 pr-3 py-1.5 hover:bg-[#1f2630] hover:text-[#00e5ff] cursor-pointer truncate text-[11px] text-[#c8d1dc]"
+                          className="pl-5 pr-3 py-1.5 hover:bg-[var(--relax-border)] hover:text-[var(--relax-accent)] cursor-pointer truncate text-[11px] text-[var(--relax-text-default)]"
                           onClick={() => onSelect(item.type)}
                           title={item.label}
                         >
@@ -135,15 +135,15 @@ export const NodeMenuList = ({ currentView, onSelect }: NodeMenuListProps) => {
                         return (
                           <div key={sub}>
                             <div
-                              className="pl-5 pr-3 py-1.5 hover:bg-[#1f2630] cursor-pointer flex justify-between items-center text-[10px] text-[#8895a7]"
+                              className="pl-5 pr-3 py-1.5 hover:bg-[var(--relax-border)] cursor-pointer flex justify-between items-center text-[10px] text-[var(--relax-text-muted)]"
                               onClick={() => setOpenSub(isSubOpen ? null : subKey)}
                             >
                               <span className="font-semibold">{sub}</span>
                               <div className="flex items-center gap-1.5">
-                                <span className="text-[8px] text-[#5a6b7c] font-mono">
+                                <span className="text-[8px] text-[var(--relax-text-muted)] font-mono">
                                   {subItems.length}
                                 </span>
-                                <span className="text-[9px] text-[#5a6b7c]">
+                                <span className="text-[9px] text-[var(--relax-text-muted)]">
                                   {isSubOpen ? "▾" : "▸"}
                                 </span>
                               </div>
@@ -153,7 +153,7 @@ export const NodeMenuList = ({ currentView, onSelect }: NodeMenuListProps) => {
                                 {subItems.map((item) => (
                                   <div
                                     key={item.type}
-                                    className="pl-8 pr-3 py-1.5 hover:bg-[#1f2630] hover:text-[#00e5ff] cursor-pointer truncate text-[11px] text-[#c8d1dc]"
+                                    className="pl-8 pr-3 py-1.5 hover:bg-[var(--relax-border)] hover:text-[var(--relax-accent)] cursor-pointer truncate text-[11px] text-[var(--relax-text-default)]"
                                     onClick={() => onSelect(item.type)}
                                     title={item.label}
                                   >

@@ -1,5 +1,6 @@
 import { getDefaultDevice } from "@/config/defaults.ts";
 import { NODE_DIMENSIONS } from "@/config/nodeDimensions.ts";
+import { readSetting } from "@/hooks/useSettings.ts";
 import { PREBUILT_MACROS } from "@/macros/macroFactory.ts";
 import type { FlowNode } from "@/types.ts";
 import { generateId } from "@/utils/generateId.ts";
@@ -114,6 +115,7 @@ export function useFlowState() {
 
   // Auto-save — strip large runtime data (base64 files, blobs) to avoid exceeding localStorage quota
   useEffect(() => {
+    const debounceMs = readSetting("autoSaveDebounceMs");
     const timer = setTimeout(() => {
       const savedNodes = nodes.map((n: any) => {
         const data = { ...n.data };
@@ -144,7 +146,7 @@ export function useFlowState() {
         // Still too large — clear and retry with minimal data
         localStorage.removeItem(LOCAL_STORAGE_KEY);
       }
-    }, 1500);
+    }, debounceMs);
     return () => clearTimeout(timer);
   }, [nodes, edges, reactFlowInstance]);
 

@@ -4,6 +4,8 @@ export interface AppSettings {
   hfToken: string;
   devicePreference: "auto" | "webgpu" | "wasm";
   autoSave: boolean;
+  autoSaveDebounceMs: number;
+  undoHistorySize: number;
 }
 
 const STORAGE_KEY = "relaxui_settings";
@@ -12,6 +14,8 @@ const DEFAULT_SETTINGS: AppSettings = {
   hfToken: "",
   devicePreference: "auto",
   autoSave: false,
+  autoSaveDebounceMs: 1500,
+  undoHistorySize: 50,
 };
 
 let listeners: (() => void)[] = [];

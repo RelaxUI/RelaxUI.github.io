@@ -84,8 +84,8 @@ export function ImportDialog({ onImport, onClose }: ImportDialogProps) {
   const tabCls = (t: string) =>
     `px-4 py-2 text-[10px] font-bold tracking-wider transition-all ${
       tab === t
-        ? "text-[#00e5ff] border-b-2 border-[#00e5ff] bg-[#1f2630]/50"
-        : "text-[#5a6b7c] hover:text-white"
+        ? "text-[var(--relax-accent)] border-b-2 border-[var(--relax-accent)] bg-[var(--relax-border)]/50"
+        : "text-[var(--relax-text-muted)] hover:text-white"
     }`;
 
   const filteredCategories = search.trim()
@@ -114,24 +114,24 @@ export function ImportDialog({ onImport, onClose }: ImportDialogProps) {
       aria-modal="true"
     >
       <div
-        className="bg-[#0f1319] border border-[#1f2630] rounded-xl shadow-2xl w-full max-w-2xl max-h-[80vh] flex flex-col overflow-hidden"
+        className="bg-[var(--relax-bg-primary)] border border-[var(--relax-border)] rounded-xl shadow-2xl w-full max-w-2xl max-h-[80vh] flex flex-col overflow-hidden"
         onClick={(e) => e.stopPropagation()}
       >
         {/* Header */}
-        <div className="flex items-center justify-between px-6 py-4 border-b border-[#1f2630]">
+        <div className="flex items-center justify-between px-6 py-4 border-b border-[var(--relax-border)]">
           <h2 className="text-white font-bold text-sm tracking-widest font-mono">
             IMPORT WORKFLOW
           </h2>
           <button
             onClick={onClose}
-            className="text-[#5a6b7c] hover:text-white text-lg transition-colors leading-none"
+            className="text-[var(--relax-text-muted)] hover:text-white text-lg transition-colors leading-none"
           >
             x
           </button>
         </div>
 
         {/* Tabs */}
-        <div className="flex gap-1 px-6 pt-3 border-b border-[#1f2630]">
+        <div className="flex gap-1 px-6 pt-3 border-b border-[var(--relax-border)]">
           <button className={tabCls("file")} onClick={() => setTab("file")}>
             LOCAL FILE
           </button>
@@ -157,7 +157,7 @@ export function ImportDialog({ onImport, onClose }: ImportDialogProps) {
           {/* ─── Local File Tab ─── */}
           {tab === "file" && (
             <div className="flex flex-col gap-4">
-              <p className="text-[#5a6b7c] text-xs">
+              <p className="text-[var(--relax-text-muted)] text-xs">
                 Select a JSON workflow file from your computer.
               </p>
               <input
@@ -169,7 +169,7 @@ export function ImportDialog({ onImport, onClose }: ImportDialogProps) {
               />
               <button
                 onClick={() => fileInputRef.current?.click()}
-                className="flex items-center justify-center gap-2 px-6 py-3 bg-[#1f2630] border border-[#2a323d] text-[#a0aec0] hover:text-[#00e5ff] hover:border-[#00e5ff] rounded-lg transition-all text-xs font-bold tracking-wider"
+                className="flex items-center justify-center gap-2 px-6 py-3 bg-[var(--relax-border)] border border-[var(--relax-border-hover)] text-[var(--relax-text-default)] hover:text-[var(--relax-accent)] hover:border-[var(--relax-accent)] rounded-lg transition-all text-xs font-bold tracking-wider"
               >
                 CHOOSE FILE
               </button>
@@ -179,7 +179,7 @@ export function ImportDialog({ onImport, onClose }: ImportDialogProps) {
           {/* ─── URL Tab ─── */}
           {tab === "url" && (
             <div className="flex flex-col gap-4">
-              <p className="text-[#5a6b7c] text-xs">
+              <p className="text-[var(--relax-text-muted)] text-xs">
                 Enter the URL of a JSON workflow file.
               </p>
               <input
@@ -187,13 +187,13 @@ export function ImportDialog({ onImport, onClose }: ImportDialogProps) {
                 value={url}
                 onChange={(e) => setUrl(e.target.value)}
                 placeholder="https://example.com/workflow.json"
-                className="w-full px-4 py-3 bg-[#131820] border border-[#2a323d] rounded-lg text-white text-xs font-mono focus:border-[#00e5ff] focus:outline-none transition-colors"
+                className="w-full px-4 py-3 bg-[var(--relax-bg-elevated)] border border-[var(--relax-border-hover)] rounded-lg text-white text-xs font-mono focus:border-[var(--relax-accent)] focus:outline-none transition-colors"
                 onKeyDown={(e) => e.key === "Enter" && handleUrlImport()}
               />
               <button
                 onClick={handleUrlImport}
                 disabled={loading || !url.trim()}
-                className="flex items-center justify-center gap-2 px-6 py-3 bg-[#1f2630] border border-[#2a323d] text-[#a0aec0] hover:text-[#00e5ff] hover:border-[#00e5ff] rounded-lg transition-all text-xs font-bold tracking-wider disabled:opacity-50 disabled:cursor-not-allowed"
+                className="flex items-center justify-center gap-2 px-6 py-3 bg-[var(--relax-border)] border border-[var(--relax-border-hover)] text-[var(--relax-text-default)] hover:text-[var(--relax-accent)] hover:border-[var(--relax-accent)] rounded-lg transition-all text-xs font-bold tracking-wider disabled:opacity-50 disabled:cursor-not-allowed"
               >
                 {loading ? "LOADING..." : "IMPORT FROM URL"}
               </button>
@@ -203,7 +203,7 @@ export function ImportDialog({ onImport, onClose }: ImportDialogProps) {
           {/* ─── Registry Tab ─── */}
           {tab === "registry" && (
             <div className="flex flex-col gap-4">
-              <p className="text-[#5a6b7c] text-xs">
+              <p className="text-[var(--relax-text-muted)] text-xs">
                 Select a ready-made workflow from the RelaxUI Registry.
                 Each workflow is pre-configured with sample data and default
                 models — just load and run.
@@ -215,18 +215,18 @@ export function ImportDialog({ onImport, onClose }: ImportDialogProps) {
                 value={search}
                 onChange={(e) => setSearch(e.target.value)}
                 placeholder="Search workflows..."
-                className="w-full px-4 py-2 bg-[#131820] border border-[#2a323d] rounded-lg text-white text-xs font-mono focus:border-[#00e5ff] focus:outline-none transition-colors"
+                className="w-full px-4 py-2 bg-[var(--relax-bg-elevated)] border border-[var(--relax-border-hover)] rounded-lg text-white text-xs font-mono focus:border-[var(--relax-accent)] focus:outline-none transition-colors"
               />
 
               {Object.entries(filteredCategories).map(
                 ([category, workflows]) => (
                   <div key={category}>
                     <div className="flex items-center gap-2 mb-2 mt-1">
-                      <span className="text-[#00e5ff] font-bold text-[10px] tracking-widest uppercase font-mono">
+                      <span className="text-[var(--relax-accent)] font-bold text-[10px] tracking-widest uppercase font-mono">
                         {category}
                       </span>
-                      <div className="flex-1 h-px bg-[#1f2630]" />
-                      <span className="text-[#3f4b59] text-[10px] font-mono">
+                      <div className="flex-1 h-px bg-[var(--relax-border)]" />
+                      <span className="text-[var(--relax-border-active)] text-[10px] font-mono">
                         {(workflows as RegistryWorkflow[]).length}
                       </span>
                     </div>
@@ -235,21 +235,21 @@ export function ImportDialog({ onImport, onClose }: ImportDialogProps) {
                         <button
                           key={wf.id}
                           onClick={() => handleRegistrySelect(wf)}
-                          className="group flex items-start gap-3 p-3 bg-[#131820] border border-[#1f2630] rounded-lg hover:border-[#00e5ff]/50 hover:bg-[#1f2630]/30 transition-all text-left"
+                          className="group flex items-start gap-3 p-3 bg-[var(--relax-bg-elevated)] border border-[var(--relax-border)] rounded-lg hover:border-[var(--relax-accent)]/50 hover:bg-[var(--relax-border)]/30 transition-all text-left"
                         >
                           <div className="flex-1 min-w-0">
                             <div className="flex items-center gap-2 flex-wrap">
-                              <span className="text-white font-bold text-xs group-hover:text-[#00e5ff] transition-colors">
+                              <span className="text-white font-bold text-xs group-hover:text-[var(--relax-accent)] transition-colors">
                                 {wf.name}
                               </span>
-                              <span className="text-[#3f4b59] text-[9px] font-mono truncate max-w-[180px]">
+                              <span className="text-[var(--relax-border-active)] text-[9px] font-mono truncate max-w-[180px]">
                                 {wf.defaultModel}
                               </span>
                               {modelSizes[wf.defaultModel] != null && (
                                 <span
                                   className={`text-[8px] font-mono font-bold px-1.5 py-0.5 rounded ${
                                     modelSizes[wf.defaultModel]! / 1024 / 1024 < 100
-                                      ? "text-[#00ffaa] bg-[#00ffaa]/10"
+                                      ? "text-[var(--relax-success)] bg-[var(--relax-success)]/10"
                                       : modelSizes[wf.defaultModel]! / 1024 / 1024 < 500
                                         ? "text-[#ffd93d] bg-[#ffd93d]/10"
                                         : "text-[#ff6b6b] bg-[#ff6b6b]/10"
@@ -261,21 +261,21 @@ export function ImportDialog({ onImport, onClose }: ImportDialogProps) {
                                 </span>
                               )}
                             </div>
-                            <p className="text-[#5a6b7c] text-[10px] mt-1 leading-relaxed">
+                            <p className="text-[var(--relax-text-muted)] text-[10px] mt-1 leading-relaxed">
                               {wf.description}
                             </p>
                             <div className="flex gap-1.5 mt-2">
                               {wf.tags.map((tag) => (
                                 <span
                                   key={tag}
-                                  className="px-1.5 py-0.5 bg-[#1f2630] text-[#5a6b7c] text-[9px] rounded font-mono"
+                                  className="px-1.5 py-0.5 bg-[var(--relax-border)] text-[var(--relax-text-muted)] text-[9px] rounded font-mono"
                                 >
                                   {tag}
                                 </span>
                               ))}
                             </div>
                           </div>
-                          <span className="text-[#2a323d] group-hover:text-[#00e5ff] transition-colors text-sm mt-1 font-mono flex-shrink-0">
+                          <span className="text-[var(--relax-border-hover)] group-hover:text-[var(--relax-accent)] transition-colors text-sm mt-1 font-mono flex-shrink-0">
                             LOAD
                           </span>
                         </button>
@@ -286,7 +286,7 @@ export function ImportDialog({ onImport, onClose }: ImportDialogProps) {
               )}
 
               {Object.keys(filteredCategories).length === 0 && (
-                <div className="text-center py-8 text-[#3f4b59] text-xs font-mono">
+                <div className="text-center py-8 text-[var(--relax-border-active)] text-xs font-mono">
                   No workflows match your search.
                 </div>
               )}

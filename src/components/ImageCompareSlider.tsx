@@ -51,19 +51,19 @@ export const ImageCompareSlider = ({
             className="absolute inset-0 w-full h-full opacity-0 cursor-ew-resize z-20 m-0 nodrag nowheel"
           />
           <div
-            className="absolute top-0 bottom-0 w-0.5 bg-[#00e5ff] pointer-events-none flex items-center justify-center z-10 shadow-[0_0_8px_#00e5ff]"
+            className="absolute top-0 bottom-0 w-0.5 bg-[var(--relax-accent)] pointer-events-none flex items-center justify-center z-10 shadow-[0_0_8px_var(--relax-accent)]"
             style={{ left: `${sliderPos}%`, transform: "translateX(-50%)" }}
           >
-            <div className="w-6 h-6 bg-[#131820] border-2 border-[#00e5ff] rounded-full flex items-center justify-center shadow-[0_0_10px_#00e5ff]">
-              <span className="text-[8px] text-[#00e5ff] font-bold tracking-tighter">
+            <div className="w-6 h-6 bg-[var(--relax-bg-elevated)] border-2 border-[var(--relax-accent)] rounded-full flex items-center justify-center shadow-[0_0_10px_var(--relax-accent)]">
+              <span className="text-[8px] text-[var(--relax-accent)] font-bold tracking-tighter">
                 ◄►
               </span>
             </div>
           </div>
-          <div className="absolute top-3 left-3 bg-[#0b0e14]/90 text-[#00e5ff] text-[10px] font-bold px-2 py-1 rounded border border-[#1f2630] opacity-0 group-hover/slider:opacity-100 transition-opacity z-10 pointer-events-none">
+          <div className="absolute top-3 left-3 bg-[var(--relax-bg-primary)]/90 text-[var(--relax-accent)] text-[10px] font-bold px-2 py-1 rounded border border-[var(--relax-border)] opacity-0 group-hover/slider:opacity-100 transition-opacity z-10 pointer-events-none">
             IN 1
           </div>
-          <div className="absolute top-3 right-3 bg-[#0b0e14]/90 text-[#00ffaa] text-[10px] font-bold px-2 py-1 rounded border border-[#1f2630] opacity-0 group-hover/slider:opacity-100 transition-opacity z-10 pointer-events-none">
+          <div className="absolute top-3 right-3 bg-[var(--relax-bg-primary)]/90 text-[var(--relax-success)] text-[10px] font-bold px-2 py-1 rounded border border-[var(--relax-border)] opacity-0 group-hover/slider:opacity-100 transition-opacity z-10 pointer-events-none">
             IN 2
           </div>
         </>

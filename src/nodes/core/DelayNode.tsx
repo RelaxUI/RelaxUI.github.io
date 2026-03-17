@@ -8,7 +8,7 @@ export const DelayNode = (props: any) => {
   return (
     <BaseNode {...props}>
       <div className="flex flex-col gap-0.5 w-full h-full justify-center nowheel nodrag">
-        <label className="text-[9px] text-[#5a6b7c] font-bold tracking-widest uppercase text-center">
+        <label className="text-[9px] text-[var(--relax-text-muted)] font-bold tracking-widest uppercase text-center">
           DELAY OUTPUT BY (MS)
         </label>
         <input
@@ -18,7 +18,7 @@ export const DelayNode = (props: any) => {
           onChange={(e) =>
             updateNodeData(props.id, "delayMs", parseInt(e.target.value))
           }
-          className="w-full text-center bg-[#0b0e14]/60 border border-[#1f2630] rounded px-2 py-1 text-sm font-bold text-white focus:outline-none focus:border-[#00e5ff]"
+          className="w-full text-center bg-[var(--relax-bg-primary)]/60 border border-[var(--relax-border)] rounded px-2 py-1 text-sm font-bold text-white focus:outline-none focus:border-[var(--relax-accent)]"
         />
       </div>
     </BaseNode>
