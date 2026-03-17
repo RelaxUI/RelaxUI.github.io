@@ -23,6 +23,10 @@ export class GraphRunner {
   receivedInputs: Record<string, Record<string, any>>;
   isRunning: boolean;
   executionDelayMs: number;
+  pendingApprovals: Map<string, { resolve: (value: any) => void; reject: (reason?: any) => void }>;
+  pausedNodes: Set<string>;
+  stoppedNodes: Set<string>;
+  pauseResolvers: Map<string, () => void>;
 
   constructor(
     nodes: FlowNode[],
@@ -41,6 +45,44 @@ export class GraphRunner {
     this.receivedInputs = {};
     this.isRunning = true;
     this.executionDelayMs = executionDelayMs ?? DEFAULTS.nodeExecutionDelayMs;
+    this.pendingApprovals = new Map();
+    this.pausedNodes = new Set();
+    this.stoppedNodes = new Set();
+    this.pauseResolvers = new Map();
+  }
+
+  pauseNode(nodeId: string) {
+    this.pausedNodes.add(nodeId);
+  }
+
+  resumeNode(nodeId: string) {
+    this.pausedNodes.delete(nodeId);
+    const resolver = this.pauseResolvers.get(nodeId);
+    if (resolver) {
+      this.pauseResolvers.delete(nodeId);
+      resolver();
+    }
+  }
+
+  stopNode(nodeId: string) {
+    this.stoppedNodes.add(nodeId);
+    // Also unblock if paused so the loop can exit
+    this.pausedNodes.delete(nodeId);
+    const resolver = this.pauseResolvers.get(nodeId);
+    if (resolver) {
+      this.pauseResolvers.delete(nodeId);
+      resolver();
+    }
+  }
+
+  /** Awaits until the node is unpaused. Returns false if stopped. */
+  async waitIfPaused(nodeId: string): Promise<boolean> {
+    if (this.stoppedNodes.has(nodeId)) return false;
+    if (!this.pausedNodes.has(nodeId)) return true;
+    await new Promise<void>((resolve) => {
+      this.pauseResolvers.set(nodeId, resolve);
+    });
+    return !this.stoppedNodes.has(nodeId);
   }
 
   async start() {
@@ -76,8 +118,8 @@ export class GraphRunner {
     sourceHandle: string,
     value: any,
     isStream = false,
-  ) {
-    if (!this.isRunning) return;
+  ): Promise<void>[] {
+    if (!this.isRunning) return [];
     let sId = sourceId;
     let sHandle = sourceHandle;
     const sourceNode = this.nodes.find((n) => n.id === sId);
@@ -90,6 +132,8 @@ export class GraphRunner {
     const outgoingEdges = this.edges.filter(
       (e) => e.source === sId && e.sourceHandle === sHandle,
     );
+
+    const promises: Promise<void>[] = [];
 
     outgoingEdges.forEach((e) => {
       this.hooks.onEdgeActive(e.id);
@@ -119,7 +163,7 @@ export class GraphRunner {
         Object.keys(this.receivedInputs[tId]!).length >= expected.size
       ) {
         if (isStream) {
-          this.executeNode(tId, isStream);
+          promises.push(this.executeNode(tId, isStream));
         } else {
           setTimeout(() => {
             if (this.isRunning) this.executeNode(tId, isStream);
@@ -127,6 +171,8 @@ export class GraphRunner {
         }
       }
     });
+
+    return promises;
   }
 
   async executeNode(nodeId: string, isStream = false) {

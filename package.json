@@ -1,6 +1,6 @@
 {
   "name": "relaxui",
-  "version": "0.3.0",
+  "version": "0.4.0",
   "private": true,
   "type": "module",
   "scripts": {
@@ -14,6 +14,7 @@
     "@huggingface/transformers": "^4.0.0-next.6",
     "@xyflow/react": "12.10.1",
     "bun-plugin-tailwind": "^0.1.2",
+    "jszip": "^3.10.1",
     "react": "^19",
     "react-dom": "^19",
     "tailwindcss": "^4.1.11"

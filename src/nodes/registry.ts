@@ -6,6 +6,8 @@ import { BatchIteratorNode } from "@/nodes/core/BatchIteratorNode.tsx";
 import { CustomScriptNode } from "@/nodes/core/CustomScriptNode.tsx";
 import { DelayNode } from "@/nodes/core/DelayNode.tsx";
 import { DownloadDataNode } from "@/nodes/core/DownloadDataNode.tsx";
+import { ImageProcessNode } from "@/nodes/core/ImageProcessNode.tsx";
+import { ReviewNode } from "@/nodes/core/ReviewNode.tsx";
 import { FolderInputNode } from "@/nodes/core/FolderInputNode.tsx";
 import { HttpRequestNode } from "@/nodes/core/HttpRequestNode.tsx";
 import { MediaInputNode } from "@/nodes/core/MediaInputNode.tsx";
@@ -54,6 +56,8 @@ export const nodeTypes: Record<string, any> = {
   delay: DelayNode,
   listAggregator: ListAggregatorNode,
   downloadData: DownloadDataNode,
+  imageProcess: ImageProcessNode,
+  reviewNode: ReviewNode,
   // Transformers.js
   transformersPipeline: PipelineNode,
   transformersModelLoader: ModelLoaderNode,
@@ -161,6 +165,12 @@ export const getNodeHandles = (
     handles.sources.push({ id: "list", label: "LIST", offsetY: 70 });
   } else if (node.type === "downloadData") {
     handles.targets.push({ id: "in", label: "DATA", offsetY: 70 });
+  } else if (node.type === "imageProcess") {
+    handles.targets.push({ id: "image", label: "IMAGE", offsetY: 70 });
+    handles.sources.push({ id: "out", label: "OUT", offsetY: 70 });
+  } else if (node.type === "reviewNode") {
+    handles.targets.push({ id: "in", label: "IN", offsetY: 70 });
+    handles.sources.push({ id: "out", label: "OUT", offsetY: 70 });
   }
   // --- Transformers.js nodes ---
   else if (node.type === "transformersPipeline") {
@@ -196,11 +206,14 @@ export const getNodeHandles = (
       handles.sources.push({ id: "result", label: "RESULT", offsetY: 80 });
     }
   } else if (node.type === "transformersModelLoader") {
-    handles.sources.push({ id: "model", label: "MODEL", offsetY: 80 });
+    handles.targets.push({ id: "model_id", label: "MODEL ID", offsetY: 50 });
+    handles.sources.push({ id: "model", label: "MODEL", offsetY: 120 });
   } else if (node.type === "transformersTokenizerLoader") {
-    handles.sources.push({ id: "tokenizer", label: "TOKENIZER", offsetY: 80 });
+    handles.targets.push({ id: "model_id", label: "MODEL ID", offsetY: 50 });
+    handles.sources.push({ id: "tokenizer", label: "TOKENIZER", offsetY: 120 });
   } else if (node.type === "transformersProcessorLoader") {
-    handles.sources.push({ id: "processor", label: "PROCESSOR", offsetY: 80 });
+    handles.targets.push({ id: "model_id", label: "MODEL ID", offsetY: 50 });
+    handles.sources.push({ id: "processor", label: "PROCESSOR", offsetY: 120 });
   } else if (node.type === "transformersGenerate") {
     handles.targets.push({ id: "model", label: "MODEL", offsetY: 50 });
     handles.targets.push({ id: "tensors", label: "TENSORS", offsetY: 80 });

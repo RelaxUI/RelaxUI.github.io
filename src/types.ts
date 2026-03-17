@@ -133,4 +133,10 @@ export interface RuntimeContextValue {
   setFullscreenImage: (img: any) => void;
   modelLoadingState: Record<string, ModelLoadingStatus>;
   executionTimes: Record<string, number>;
+  clearDisplayData: (nodeId: string) => void;
+  resolveApproval: (nodeId: string, value: any) => void;
+  rejectApproval: (nodeId: string) => void;
+  pauseNode: (nodeId: string) => void;
+  resumeNode: (nodeId: string) => void;
+  stopNode: (nodeId: string) => void;
 }

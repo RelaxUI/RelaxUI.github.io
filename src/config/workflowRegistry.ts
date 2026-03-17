@@ -1948,6 +1948,196 @@ const CLASS_WORKFLOWS: RegistryWorkflow[] = [
 
 WORKFLOW_REGISTRY.push(...CLASS_WORKFLOWS);
 
+/* ─── Additional Workflows (v0.4.0) ─────────────────────────────────────── */
+
+WORKFLOW_REGISTRY.push(
+  {
+    id: "bria-rmbg-2",
+    name: "Background Removal (BRIA RMBG-2.0)",
+    description:
+      "Remove image backgrounds using BRIA RMBG-2.0 (gated model — requires HF token in Settings)",
+    category: "Vision",
+    tags: ["background-removal", "segmentation", "gated"],
+    defaultModel: "briaai/RMBG-2.0",
+    create: () =>
+      createPipelineWorkflow(
+        "image-segmentation",
+        [
+          {
+            type: "inputImage",
+            value: SAMPLE.imageUrl,
+            label: "Input Image",
+            handleId: "image",
+          },
+        ],
+        [
+          {
+            type: "outputImage",
+            label: "Result",
+            handleId: "result",
+            targetHandle: "in1",
+          },
+        ],
+        [{ sourceIdx: 0, targetIdx: 0, targetHandle: "in2" }],
+      ),
+  },
+  {
+    id: "kokoro-tts",
+    name: "Kokoro TTS",
+    description:
+      "Text-to-speech synthesis using Kokoro 82M ONNX model",
+    category: "Audio",
+    tags: ["TTS", "speech", "kokoro"],
+    defaultModel: "onnx-community/Kokoro-82M-ONNX",
+    create: () =>
+      createPipelineWorkflow(
+        "text-to-speech",
+        [
+          {
+            type: "inputText",
+            value: "Hello, this is a test of the Kokoro text to speech system.",
+            label: "Text Input",
+            handleId: "text",
+          },
+        ],
+        [
+          {
+            type: "audioOutput",
+            label: "Audio Output",
+            handleId: "result",
+            targetHandle: "audio",
+          },
+        ],
+      ),
+  },
+  {
+    id: "jina-clip-v2",
+    name: "Jina CLIP v2 (Embeddings)",
+    description:
+      "Generate embeddings using Jina CLIP v2 for text and image understanding",
+    category: "NLP",
+    tags: ["embeddings", "CLIP", "feature-extraction"],
+    defaultModel: "jinaai/jina-clip-v2",
+    create: () =>
+      createPipelineWorkflow(
+        "feature-extraction",
+        [
+          {
+            type: "inputText",
+            value: "A photo of a beautiful sunset over the ocean.",
+            label: "Input Text",
+            handleId: "text",
+          },
+        ],
+        [
+          {
+            type: "outputText",
+            label: "Embedding Info",
+            handleId: "result",
+            targetHandle: "in",
+          },
+        ],
+      ),
+  },
+  {
+    id: "image-captioning-workflow",
+    name: "Image Captioning Workflow",
+    description:
+      "Complete pipeline: load images from folder, resize, caption via OpenRouter API, review, aggregate, and download as ZIP",
+    category: "Workflows",
+    tags: ["captioning", "batch", "review", "zip"],
+    defaultModel: "x-ai/grok-4.1-fast",
+    create: () => {
+      const nodes: FlowNode[] = [];
+      const edges: Edge[] = [];
+
+      const folderId = generateId("n");
+      nodes.push({
+        id: folderId,
+        type: "folderInput",
+        position: { x: 50, y: 200 },
+        macroId: null,
+        data: { label: "Image Folder" },
+      });
+
+      const batchId = generateId("n");
+      nodes.push({
+        id: batchId,
+        type: "batchIterator",
+        position: { x: 350, y: 200 },
+        macroId: null,
+        data: { label: "Iterate Images", batchSize: 1, delayMs: 1000 },
+      });
+      edges.push({
+        id: generateId("e"),
+        source: folderId,
+        sourceHandle: "images",
+        target: batchId,
+        targetHandle: "list",
+      });
+
+      const processId = generateId("n");
+      nodes.push({
+        id: processId,
+        type: "imageProcess",
+        position: { x: 650, y: 200 },
+        macroId: null,
+        data: { label: "Resize 1K 1:1", aspectRatio: "1:1", resolution: "1K" },
+      });
+      edges.push({
+        id: generateId("e"),
+        source: batchId,
+        sourceHandle: "item",
+        target: processId,
+        targetHandle: "image",
+      });
+
+      const reviewId = generateId("n");
+      nodes.push({
+        id: reviewId,
+        type: "reviewNode",
+        position: { x: 1300, y: 200 },
+        macroId: null,
+        data: { label: "Review Captions" },
+      });
+
+      const aggId = generateId("n");
+      nodes.push({
+        id: aggId,
+        type: "listAggregator",
+        position: { x: 1650, y: 200 },
+        macroId: null,
+        data: { label: "Collect Captions" },
+      });
+      edges.push({
+        id: generateId("e"),
+        source: reviewId,
+        sourceHandle: "out",
+        target: aggId,
+        targetHandle: "item",
+      });
+
+      const downloadId = generateId("n");
+      nodes.push({
+        id: downloadId,
+        type: "downloadData",
+        position: { x: 1950, y: 200 },
+        macroId: null,
+        data: { label: "Download ZIP", format: "zip" },
+      });
+      edges.push({
+        id: generateId("e"),
+        source: aggId,
+        sourceHandle: "list",
+        target: downloadId,
+        targetHandle: "in",
+      });
+
+      return { nodes, edges };
+    },
+  },
+);
+
 /* ─── Category Index ─────────────────────────────────────────────────────── */
 
 export const REGISTRY_CATEGORIES: Record<string, RegistryWorkflow[]> = {};

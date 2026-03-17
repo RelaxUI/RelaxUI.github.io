@@ -15,8 +15,15 @@ export const DEFAULTS = {
   maskedLmTopK: 5,
 } as const;
 
-/** Auto-detect best available device with fallback */
+/** Auto-detect best available device with fallback, respecting user settings */
 export function getDefaultDevice(): string {
+  try {
+    const raw = localStorage.getItem("relaxui_settings");
+    if (raw) {
+      const pref = JSON.parse(raw).devicePreference;
+      if (pref && pref !== "auto") return pref;
+    }
+  } catch {}
   if (typeof navigator !== "undefined" && (navigator as any).gpu) {
     return DEFAULTS.devicePreferred;
   }

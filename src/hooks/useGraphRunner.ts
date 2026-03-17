@@ -22,6 +22,34 @@ export function useGraphRunner() {
   const runnerRef = useRef<GraphRunner | null>(null);
   const nodeStartTimes = useRef<Record<string, number>>({});
 
+  const clearDisplayData = useCallback((nodeId: string) => {
+    setDisplayData((prev) => {
+      const next = { ...prev };
+      delete next[nodeId];
+      return next;
+    });
+  }, []);
+
+  const resolveApproval = useCallback((nodeId: string, value: any) => {
+    runnerRef.current?.pendingApprovals?.get(nodeId)?.resolve(value);
+  }, []);
+
+  const rejectApproval = useCallback((nodeId: string) => {
+    runnerRef.current?.pendingApprovals?.get(nodeId)?.reject({ action: "cancel" });
+  }, []);
+
+  const pauseNode = useCallback((nodeId: string) => {
+    runnerRef.current?.pauseNode(nodeId);
+  }, []);
+
+  const resumeNode = useCallback((nodeId: string) => {
+    runnerRef.current?.resumeNode(nodeId);
+  }, []);
+
+  const stopNode = useCallback((nodeId: string) => {
+    runnerRef.current?.stopNode(nodeId);
+  }, []);
+
   const triggerEdge = useCallback((id: string) => {
     setActiveEdges((prev) => {
       const next = new Map(prev);
@@ -129,5 +157,12 @@ export function useGraphRunner() {
     runFlow,
     setDisplayData,
     setNodeErrors,
+    clearDisplayData,
+    resolveApproval,
+    rejectApproval,
+    pauseNode,
+    resumeNode,
+    stopNode,
+    runnerRef,
   };
 }

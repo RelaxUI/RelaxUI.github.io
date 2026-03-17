@@ -112,17 +112,38 @@ export function useFlowState() {
   const [currentView, setCurrentView] = useState<string | null>(null);
   const reactFlowInstance = useReactFlow();
 
-  // Auto-save
+  // Auto-save — strip large runtime data (base64 files, blobs) to avoid exceeding localStorage quota
   useEffect(() => {
     const timer = setTimeout(() => {
+      const savedNodes = nodes.map((n: any) => {
+        const data = { ...n.data };
+        // Strip large transient values that are re-loaded at runtime
+        if (n.type === "folderInput") {
+          delete data.value;
+          delete data.fileMeta;
+          delete data.count;
+        }
+        // Strip any data URL values over 64KB (images, audio, video loaded from file inputs)
+        for (const key of Object.keys(data)) {
+          if (typeof data[key] === "string" && data[key].length > 65536 && data[key].startsWith("data:")) {
+            delete data[key];
+          }
+        }
+        return { ...n, data };
+      });
       const flow = {
-        nodes,
+        nodes: savedNodes,
         edges,
         viewport: reactFlowInstance
           ? reactFlowInstance.getViewport()
           : { x: 0, y: 0, zoom: 1 },
       };
-      localStorage.setItem(LOCAL_STORAGE_KEY, JSON.stringify(flow));
+      try {
+        localStorage.setItem(LOCAL_STORAGE_KEY, JSON.stringify(flow));
+      } catch {
+        // Still too large — clear and retry with minimal data
+        localStorage.removeItem(LOCAL_STORAGE_KEY);
+      }
     }, 1500);
     return () => clearTimeout(timer);
   }, [nodes, edges, reactFlowInstance]);

@@ -10,6 +10,20 @@ const modelCache = new Map<string, Promise<any>>();
 const tokenizerCache = new Map<string, Promise<any>>();
 const processorCache = new Map<string, Promise<any>>();
 
+/** Apply HF access token from settings before any model load */
+async function applyHfToken() {
+  try {
+    const raw = localStorage.getItem("relaxui_settings");
+    if (raw) {
+      const token = JSON.parse(raw).hfToken;
+      if (token) {
+        const { env } = await import("@huggingface/transformers");
+        (env as any).accessToken = token;
+      }
+    }
+  } catch {}
+}
+
 function writeWavString(view: DataView, offset: number, str: string) {
   for (let i = 0; i < str.length; i++)
     view.setUint8(offset + i, str.charCodeAt(i));
@@ -63,6 +77,7 @@ export async function pipelineExecutor(
   inputs: Record<string, any>,
   ctx: GraphRunner,
 ): Promise<void> {
+  await applyHfToken();
   const { pipeline } = await import("@huggingface/transformers");
 
   const task = node.data.task;
@@ -185,13 +200,14 @@ export async function pipelineExecutor(
 
 export async function modelLoaderExecutor(
   node: FlowNode,
-  _inputs: Record<string, any>,
+  inputs: Record<string, any>,
   ctx: GraphRunner,
 ): Promise<void> {
+  await applyHfToken();
   const transformers = await import("@huggingface/transformers");
 
   const modelClass = node.data.modelClass || "AutoModel";
-  const modelId = node.data.model_id || "";
+  const modelId = inputs.model_id || node.data.model_id || "";
   const device = node.data.device || getDefaultDevice();
   const dtype = node.data.dtype || undefined;
 
@@ -248,12 +264,13 @@ export async function modelLoaderExecutor(
 
 export async function tokenizerLoaderExecutor(
   node: FlowNode,
-  _inputs: Record<string, any>,
+  inputs: Record<string, any>,
   ctx: GraphRunner,
 ): Promise<void> {
+  await applyHfToken();
   const { AutoTokenizer } = await import("@huggingface/transformers");
 
-  const modelId = node.data.model_id || "";
+  const modelId = inputs.model_id || node.data.model_id || "";
   const cacheKey = `tokenizer:${modelId}`;
 
   if (!tokenizerCache.has(cacheKey)) {
@@ -279,12 +296,13 @@ export async function tokenizerLoaderExecutor(
 
 export async function processorLoaderExecutor(
   node: FlowNode,
-  _inputs: Record<string, any>,
+  inputs: Record<string, any>,
   ctx: GraphRunner,
 ): Promise<void> {
+  await applyHfToken();
   const { AutoProcessor } = await import("@huggingface/transformers");
 
-  const modelId = node.data.model_id || "";
+  const modelId = inputs.model_id || node.data.model_id || "";
   const cacheKey = `processor:${modelId}`;
 
   if (!processorCache.has(cacheKey)) {

@@ -1,12 +1,14 @@
 import { DEFAULTS } from "@/config/defaults.ts";
 import { RuntimeContext } from "@/context/RuntimeContext.ts";
 import { BaseNode } from "@/nodes/BaseNode.tsx";
-import { useContext } from "react";
+import { useContext, useState } from "react";
 
 export const BatchIteratorNode = (props: any) => {
-  const { updateNodeData, displayData } = useContext(RuntimeContext)!;
+  const { updateNodeData, displayData, computingNodes, pauseNode, resumeNode, stopNode } = useContext(RuntimeContext)!;
   const progress = displayData[props.id];
   const hasProg = progress && typeof progress.current === "number";
+  const isRunning = computingNodes.has(props.id);
+  const [paused, setPaused] = useState(false);
 
   return (
     <BaseNode {...props}>
@@ -55,6 +57,37 @@ export const BatchIteratorNode = (props: any) => {
                 }}
               />
             </div>
+          </div>
+        )}
+        {isRunning && (
+          <div className="flex gap-1.5 mt-1">
+            <button
+              onClick={() => {
+                if (paused) {
+                  resumeNode(props.id);
+                  setPaused(false);
+                } else {
+                  pauseNode(props.id);
+                  setPaused(true);
+                }
+              }}
+              className={`flex-1 px-2 py-1 rounded text-[9px] font-bold tracking-widest uppercase border transition-colors cursor-pointer ${
+                paused
+                  ? "bg-[var(--relax-accent)]/20 border-[var(--relax-accent)] text-[var(--relax-accent)] hover:bg-[var(--relax-accent)]/30"
+                  : "bg-yellow-500/20 border-yellow-500/50 text-yellow-400 hover:bg-yellow-500/30"
+              }`}
+            >
+              {paused ? "▶ RESUME" : "⏸ PAUSE"}
+            </button>
+            <button
+              onClick={() => {
+                stopNode(props.id);
+                setPaused(false);
+              }}
+              className="flex-1 px-2 py-1 rounded text-[9px] font-bold tracking-widest uppercase border bg-red-500/20 border-red-500/50 text-red-400 hover:bg-red-500/30 transition-colors cursor-pointer"
+            >
+              ⏹ STOP
+            </button>
           </div>
         )}
       </div>

@@ -112,7 +112,9 @@ export const BaseNode = ({
         }`}
       style={{
         width: effectiveW,
-        minHeight: effectiveH,
+        ...(data._userHeight
+          ? { height: effectiveH }
+          : { minHeight: effectiveH }),
       }}
     >
       <NodeToolbar position={Position.Top} offset={10} className="flex gap-2">
@@ -211,7 +213,7 @@ export const BaseNode = ({
       {/* Resize handle - nodrag prevents ReactFlow from capturing drag events */}
       <div
         onPointerDown={onResizePointerDown}
-        className="nodrag absolute bottom-0 right-0 w-4 h-4 cursor-nwse-resize opacity-0 group-hover:opacity-60 transition-opacity z-40"
+        className={`nodrag absolute bottom-0 right-0 w-4 h-4 cursor-nwse-resize transition-opacity z-40 ${selected ? 'opacity-60' : 'opacity-0 group-hover:opacity-60'}`}
         title="Drag to resize"
       >
         <svg viewBox="0 0 12 12" className="w-full h-full text-[var(--relax-text-muted)]">

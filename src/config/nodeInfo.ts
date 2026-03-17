@@ -82,9 +82,19 @@ export const NODE_INFO: Record<string, NodeInfo> = {
     out: "list (Array)",
   },
   downloadData: {
-    desc: "Takes any data input and provides a button in the UI to download it locally as a JSON file.",
+    desc: "Takes any data input and provides download in multiple formats: JSON, CSV, TXT for text/tabular data; PNG, JPG, WEBP for images; ZIP for mixed arrays.",
     in: "in (Any)",
     out: "None",
+  },
+  imageProcess: {
+    desc: "Resizes, crops, and converts images. Supports aspect ratio presets, resolution scaling (1K/2K/4K), crop anchoring, format conversion, and quality control.",
+    in: "image (Data URL)",
+    out: "Processed image (Data URL)",
+  },
+  reviewNode: {
+    desc: "Pauses execution for manual review and approval. Supports approve, edit, rework (re-trigger upstream), and cancel actions.",
+    in: "in (Any)",
+    out: "Approved data",
   },
   // Transformers.js nodes
   transformersPipeline: {

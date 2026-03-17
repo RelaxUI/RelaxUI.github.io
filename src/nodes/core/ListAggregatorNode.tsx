@@ -3,7 +3,7 @@ import { BaseNode } from "@/nodes/BaseNode.tsx";
 import { useContext } from "react";
 
 export const ListAggregatorNode = (props: any) => {
-  const { displayData, updateNodeData } = useContext(RuntimeContext)!;
+  const { displayData, updateNodeData, clearDisplayData } = useContext(RuntimeContext)!;
   const list = displayData[props.id] || [];
   return (
     <BaseNode {...props}>
@@ -13,7 +13,10 @@ export const ListAggregatorNode = (props: any) => {
             COUNT: {list.length}
           </span>
           <button
-            onClick={() => updateNodeData(props.id, "resetTrigger", Date.now())}
+            onClick={() => {
+              updateNodeData(props.id, "resetTrigger", Date.now());
+              clearDisplayData(props.id);
+            }}
             className="text-[9px] bg-[#1f2630] text-red-400 font-bold px-2 py-1 rounded hover:bg-red-500 hover:text-white transition-colors shadow-lg"
           >
             RESET

@@ -27,7 +27,9 @@ export const NODE_DIMENSIONS: Record<string, NodeDimension> = {
     title: "LIST AGGREGATOR",
     sub: "collect items",
   },
-  downloadData: { w: 220, h: 120, title: "DOWNLOAD DATA", sub: "export json" },
+  downloadData: { w: 220, h: 160, title: "DOWNLOAD DATA", sub: "multi-format" },
+  imageProcess: { w: 280, h: 420, title: "IMAGE PROCESS", sub: "resize/convert" },
+  reviewNode: { w: 320, h: 400, title: "REVIEW", sub: "manual approval" },
   // Transformers.js nodes
   transformersPipeline: {
     w: 300,
@@ -37,19 +39,19 @@ export const NODE_DIMENSIONS: Record<string, NodeDimension> = {
   },
   transformersModelLoader: {
     w: 300,
-    h: 260,
+    h: 300,
     title: "MODEL LOADER",
     sub: "transformers.js",
   },
   transformersTokenizerLoader: {
     w: 280,
-    h: 200,
+    h: 240,
     title: "TOKENIZER",
     sub: "transformers.js",
   },
   transformersProcessorLoader: {
     w: 280,
-    h: 200,
+    h: 240,
     title: "PROCESSOR",
     sub: "transformers.js",
   },

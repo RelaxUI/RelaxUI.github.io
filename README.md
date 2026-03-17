@@ -21,11 +21,15 @@ RelaxUI is a fully client-side, node-based workflow builder that lets you design
 - Streaming support for text generation and API calls
 - Macro system for creating reusable sub-workflows
 - **Undo/Redo** (Ctrl+Z / Ctrl+Shift+Z) and **Copy/Paste** (Ctrl+C / Ctrl+V) for nodes
-- **Batch processing** with progress tracking, folder input with auto-categorization (images/audio/video/text), and multi-format download (JSON/CSV)
+- **Batch processing** with progress tracking, pause/resume/stop controls, folder input with auto-categorization (images/audio/video/text), and multi-format download (JSON/CSV/ZIP/PNG/JPG/WEBP)
+- **Review Node** — manual approval gate with data preview (images, audio, video, text), inline editing, rework, and cancel actions; pauses batch iteration until user acts
+- **Image Process Node** — aspect ratio presets, resolution scaling (1K/2K/4K), 3x3 crop anchor grid, format conversion, quality control
+- **Settings Dialog** — Hugging Face token, device preference (Auto/WebGPU/WASM), auto-save toggle, cache management
+- **Node Picker Panel** — searchable sidebar for adding nodes (alternative to right-click context menu)
 - **Model size estimation** with color-coded badges and hardware compatibility hints (including tokenizer/processor nodes)
 - **Audio playback** — listen to audio files directly in Audio Input nodes
 - **Execution time tracking** per node
-- Auto-save to localStorage
+- Auto-save to localStorage (large data like folder contents auto-stripped to prevent quota errors)
 - Export workflows as JSON (Ctrl+S)
 - **Mobile-responsive header** — adapts to small screens
 - Dark theme with CSS custom property design tokens
@@ -92,7 +96,8 @@ src/
 │   └── RuntimeContext.ts            React context for global state
 ├── hooks/                           Custom React hooks
 │   ├── useFlowState.ts              Node/edge state, auto-save, CRUD, breadcrumbs
-│   ├── useGraphRunner.ts            Execution state, display data, timing
+│   ├── useGraphRunner.ts            Execution state, display data, timing, pause/stop
+│   ├── useSettings.ts               Persistent app settings (localStorage)
 │   ├── useUndoRedo.ts               History stack with undo/redo
 │   ├── useCopyPaste.ts              Node copy/paste with macro support
 │   └── useKeyboardShortcuts.ts      Global keyboard shortcut handler
@@ -102,6 +107,9 @@ src/
 │   ├── FullscreenModal.tsx          Fullscreen image/compare overlay
 │   ├── ImportDialog.tsx             Import dialog (file / URL / registry + model sizes)
 │   ├── ContextMenu/                 Searchable hierarchical context menu
+│   ├── NodeMenuList.tsx             Hierarchical node picker with search
+│   ├── NodePickerPanel.tsx          Sidebar panel wrapper for NodeMenuList
+│   ├── SettingsDialog.tsx           App settings (HF token, device, auto-save)
 │   ├── LabeledHandle.tsx            Handle with hover label
 │   ├── CustomAnimatedEdge.tsx       Animated edge with activity indicator
 │   ├── ImageCompareSlider.tsx       Before/after image comparison
@@ -127,8 +135,10 @@ src/
 │   │   ├── MediaInputNode.tsx       Unified image/audio input (FILE/URL toggle)
 │   │   ├── OutputTextNode.tsx       Rich visualization output (auto-selects renderer)
 │   │   ├── OutputImageNode.tsx      Image display with annotation overlay support
-│   │   ├── BatchIteratorNode.tsx    Batch iteration with progress bar
-│   │   ├── DownloadDataNode.tsx     Multi-format export (JSON/CSV)
+│   │   ├── BatchIteratorNode.tsx    Batch iteration with progress bar, pause/stop
+│   │   ├── DownloadDataNode.tsx     Multi-format export (JSON/CSV/ZIP/media)
+│   │   ├── ImageProcessNode.tsx    Image transform (aspect, resolution, crop)
+│   │   ├── ReviewNode.tsx          Manual approval gate with media preview
 │   │   └── ...                      Other core nodes
 │   └── transformers/                Transformers.js node types
 │       ├── CompanionLoaderNode.tsx  Unified tokenizer/processor loader
@@ -142,7 +152,8 @@ src/
 │   └── modelClassMacroFactory.ts    Auto-generates 19+ model class macros
 └── utils/
     ├── generateId.ts                Unique ID generator
-    └── modelRegistry.ts             HuggingFace model size estimator & cache manager
+    ├── modelRegistry.ts             HuggingFace model size estimator & cache manager
+    └── nodeMenuItems.ts             Categorized node menu item generation
 ```
 
 ## Rich Output Visualizations
@@ -178,11 +189,13 @@ The `VisualizationRenderer` auto-detects data shapes when metadata is absent, ma
 | HTTP Request    | `httpRequest`                              | Fetch API with SSE streaming support                                           |
 | JSON Path       | `jsonPath`                                 | Extracts values via dot notation                                               |
 | Macro Node      | `macroNode`                                | Container for nested sub-workflows                                             |
-| Batch Iterator  | `batchIterator`                            | Iterate over array items with progress tracking                                |
+| Batch Iterator  | `batchIterator`                            | Iterate over array items with progress tracking, pause/resume/stop controls    |
 | Delay           | `delay`                                    | Pause execution for N milliseconds                                             |
 | List Aggregator | `listAggregator`                           | Collect streamed items into a single array                                     |
 | Folder Input    | `folderInput`                              | Pick folder, auto-categorize files, filtered outputs (images/audio/text/video) |
-| Download Data   | `downloadData`                             | Export data as JSON or CSV                                                     |
+| Download Data   | `downloadData`                             | Multi-format export (JSON/CSV/TXT/ZIP with auto-detected media types)          |
+| Image Process   | `imageProcess`                             | Aspect ratio, resolution, crop anchor, format conversion, quality control      |
+| Review Node     | `reviewNode`                               | Manual approval gate with preview, inline edit, rework, and cancel             |
 
 ### Transformers.js Base Nodes
 
@@ -418,6 +431,7 @@ The integration test covers:
 | [@xyflow/react](https://reactflow.dev)                                   | 12.10        | Node graph visualization     |
 | [@huggingface/transformers](https://huggingface.co/docs/transformers.js) | 4.0.0-next.6 | In-browser ML inference      |
 | [Tailwind CSS](https://tailwindcss.com)                                  | 4.1          | Utility-first styling        |
+| [JSZip](https://stuk.github.io/jszip/)                                   | 3.10         | ZIP file generation          |
 | TypeScript                                                               | ESNext       | Type safety                  |
 
 ## License

@@ -1,15 +1,12 @@
-import {
-  Background,
-  Controls,
-  MiniMap,
-  ReactFlow,
-} from "@xyflow/react";
+import { Background, Controls, MiniMap, ReactFlow } from "@xyflow/react";
 import { useCallback, useMemo, useState } from "react";
 
 import { ContextMenu } from "@/components/ContextMenu/ContextMenu.tsx";
 import { FullscreenModal } from "@/components/FullscreenModal.tsx";
 import { ImportDialog } from "@/components/ImportDialog.tsx";
 import { InfoModal } from "@/components/InfoModal.tsx";
+import { NodePickerPanel } from "@/components/NodePickerPanel.tsx";
+import { SettingsDialog } from "@/components/SettingsDialog.tsx";
 import { TopBar } from "@/components/TopBar.tsx";
 import { RuntimeContext } from "@/context/RuntimeContext.ts";
 import { useCopyPaste } from "@/hooks/useCopyPaste.ts";
@@ -18,7 +15,6 @@ import { useGraphRunner } from "@/hooks/useGraphRunner.ts";
 import { useKeyboardShortcuts } from "@/hooks/useKeyboardShortcuts.ts";
 import { useUndoRedo } from "@/hooks/useUndoRedo.ts";
 import { edgeTypes, nodeTypes } from "@/nodes/registry.ts";
-import type { FlowNode } from "@/types.ts";
 
 export function FlowEditor() {
   const flow = useFlowState();
@@ -32,7 +28,9 @@ export function FlowEditor() {
     y: number;
   } | null>(null);
   const [importDialogOpen, setImportDialogOpen] = useState(false);
-  const [showMiniMap, setShowMiniMap] = useState(true);
+  const [showMiniMap, setShowMiniMap] = useState(false);
+  const [settingsOpen, setSettingsOpen] = useState(false);
+  const [nodePickerOpen, setNodePickerOpen] = useState(false);
 
   // Undo/Redo
   const undoRedo = useUndoRedo(
@@ -69,6 +67,19 @@ export function FlowEditor() {
     [contextMenu, flow, undoRedo],
   );
 
+  // Add node at viewport center (for NodePickerPanel)
+  const handleAddNodeAtCenter = useCallback(
+    (type: string) => {
+      const position = flow.reactFlowInstance.screenToFlowPosition({
+        x: window.innerWidth / 2,
+        y: window.innerHeight / 2,
+      });
+      flow.addNode(type, position);
+      undoRedo.takeSnapshot();
+    },
+    [flow, undoRedo],
+  );
+
   const handleRunFlow = useCallback(() => {
     runner.runFlow(flow.nodes, flow.edges);
   }, [runner, flow.nodes, flow.edges]);
@@ -96,6 +107,8 @@ export function FlowEditor() {
         setContextMenu(null);
         setFullscreenImage(null);
         setInfoNodeId(null);
+        setSettingsOpen(false);
+        setNodePickerOpen(false);
       },
     }),
     [undoRedo, copyPaste, flow.exportFlow, handleRunFlow],
@@ -134,6 +147,17 @@ export function FlowEditor() {
     [flow, undoRedo],
   );
 
+  const clearWorkflow = useCallback(() => {
+    flow.setNodes([]);
+    flow.setEdges([]);
+  }, [flow]);
+
+  const resetToDefault = useCallback(() => {
+    const d = flow.getDefaultGraph();
+    flow.setNodes(d.nodes as any);
+    flow.setEdges(d.edges as any);
+  }, [flow]);
+
   return (
     <RuntimeContext.Provider
       value={{
@@ -153,6 +177,12 @@ export function FlowEditor() {
         setFullscreenImage,
         modelLoadingState: runner.modelLoadingState,
         executionTimes: runner.executionTimes,
+        clearDisplayData: runner.clearDisplayData,
+        resolveApproval: runner.resolveApproval,
+        rejectApproval: runner.rejectApproval,
+        pauseNode: runner.pauseNode,
+        resumeNode: runner.resumeNode,
+        stopNode: runner.stopNode,
       }}
     >
       <div className="w-full h-screen flex flex-col bg-[var(--relax-bg-primary)] font-sans overflow-hidden select-none text-[var(--relax-text-default)]">
@@ -188,19 +218,14 @@ export function FlowEditor() {
           runFlow={handleRunFlow}
           exportFlow={flow.exportFlow}
           openImport={() => setImportDialogOpen(true)}
-          clearWorkflow={() => {
-            flow.setNodes([]);
-            flow.setEdges([]);
-          }}
-          resetToDefault={() => {
-            const d = flow.getDefaultGraph();
-            flow.setNodes(d.nodes as any);
-            flow.setEdges(d.edges as any);
-          }}
+          clearWorkflow={clearWorkflow}
+          resetToDefault={resetToDefault}
           undo={undoRedo.undo}
           redo={undoRedo.redo}
           canUndo={undoRedo.canUndo}
           canRedo={undoRedo.canRedo}
+          openSettings={() => setSettingsOpen(true)}
+          openNodePicker={() => setNodePickerOpen(true)}
         />
 
         {/* REACT FLOW CANVAS */}
@@ -246,10 +271,13 @@ export function FlowEditor() {
           {/* MiniMap toggle — icon button matching zoom controls style */}
           <button
             onClick={() => setShowMiniMap((v) => !v)}
-            className="absolute bottom-[140px] left-[15px] z-20 w-[26px] h-[26px] flex items-center justify-center bg-[#131820] border border-[#1f2630] rounded-lg shadow-[0_4px_15px_rgba(0,0,0,0.5)] transition-all duration-200 hover:bg-[#1f2630] group/map"
+            className="absolute bottom-[100px] left-[15px] z-20 w-[26px] h-[26px] flex items-center justify-center bg-[#131820] border border-[#1f2630] rounded-lg shadow-[0_4px_15px_rgba(0,0,0,0.5)] transition-all duration-200 hover:bg-[#1f2630] group/map"
             title={showMiniMap ? "Hide MiniMap" : "Show MiniMap"}
           >
-            <svg className={`w-3.5 h-3.5 transition-colors duration-200 group-hover/map:fill-[#00e5ff] ${showMiniMap ? "fill-[#00e5ff]" : "fill-[#5a6b7c]"}`} viewBox="0 0 24 24">
+            <svg
+              className={`w-3.5 h-3.5 transition-colors duration-200 group-hover/map:fill-[#00e5ff] ${showMiniMap ? "fill-[#00e5ff]" : "fill-[#5a6b7c]"}`}
+              viewBox="0 0 24 24"
+            >
               <path d="M20.5 3l-.16.03L15 5.1 9 3 3.36 4.9c-.21.07-.36.25-.36.48V20.5c0 .28.22.5.5.5l.16-.03L9 18.9l6 2.1 5.64-1.9c.21-.07.36-.25.36-.48V3.5c0-.28-.22-.5-.5-.5zM15 19l-6-2.11V5l6 2.11V19z" />
             </svg>
           </button>
@@ -270,6 +298,26 @@ export function FlowEditor() {
           <ImportDialog
             onImport={handleImportFlow}
             onClose={() => setImportDialogOpen(false)}
+          />
+        )}
+
+        {/* SETTINGS DIALOG */}
+        {settingsOpen && (
+          <SettingsDialog
+            onClose={() => setSettingsOpen(false)}
+            openImport={() => setImportDialogOpen(true)}
+            exportFlow={flow.exportFlow}
+            clearWorkflow={clearWorkflow}
+            resetToDefault={resetToDefault}
+          />
+        )}
+
+        {/* NODE PICKER PANEL */}
+        {nodePickerOpen && (
+          <NodePickerPanel
+            currentView={flow.currentView}
+            onSelect={handleAddNodeAtCenter}
+            onClose={() => setNodePickerOpen(false)}
           />
         )}
 

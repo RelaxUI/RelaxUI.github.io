@@ -77,6 +77,22 @@ function createModelClassMacro(className: string): MacroDefinition {
         data: { model_id: "" },
       });
 
+      // Wire model_id param to model loader and companion loader
+      edges.push({
+        id: generateId("e"),
+        source: modelParamId,
+        sourceHandle: "out",
+        target: modelLoaderId,
+        targetHandle: "model_id",
+      });
+      edges.push({
+        id: generateId("e"),
+        source: modelParamId,
+        sourceHandle: "out",
+        target: companionId,
+        targetHandle: "model_id",
+      });
+
       let yOut = 80;
 
       if (classDef.executionModes.includes("generate")) {

@@ -209,8 +209,17 @@ const executors: Record<string, Executor> = {
     const batchSize = node.data.batchSize || 1;
     const delayMs = node.data.delayMs ?? DEFAULTS.batchDelayMs;
 
+    // Clear any previous stop signal so re-runs work
+    ctx.stoppedNodes.delete(node.id);
+    ctx.pausedNodes.delete(node.id);
+
     for (let i = 0; i < list.length; i += batchSize) {
-      if (!ctx.isRunning) break;
+      if (!ctx.isRunning || ctx.stoppedNodes.has(node.id)) break;
+
+      // Wait if paused
+      const shouldContinue = await ctx.waitIfPaused(node.id);
+      if (!shouldContinue || !ctx.isRunning) break;
+
       const chunk = list.slice(i, i + batchSize);
       const outVal = batchSize === 1 ? chunk[0] : chunk;
 
@@ -220,17 +229,28 @@ const executors: Record<string, Executor> = {
           current: Math.min(i + batchSize, list.length),
           total: list.length,
           item: outVal,
+          paused: ctx.pausedNodes.has(node.id),
+          stopped: ctx.stoppedNodes.has(node.id),
         },
         false,
       );
 
-      ctx.pushValue(node.id, "item", outVal, true);
+      const downstream = ctx.pushValue(node.id, "item", outVal, true);
+      await Promise.all(downstream);
 
       if (i + batchSize < list.length) {
         await new Promise((r) => setTimeout(r, delayMs));
       }
     }
-    ctx.setRunStatus("COMPLETED");
+
+    // Final display data update
+    const wasStopped = ctx.stoppedNodes.has(node.id);
+    ctx.stoppedNodes.delete(node.id);
+    ctx.pausedNodes.delete(node.id);
+
+    if (wasStopped) {
+      ctx.setDisplayData(node.id, { current: 0, total: list.length }, false);
+    }
   },
 
   delay: async (node, inputs, ctx, isStream) => {
@@ -256,6 +276,103 @@ const executors: Record<string, Executor> = {
 
   downloadData: (node, inputs, ctx, isStream) => {
     ctx.setDisplayData(node.id, inputs.in, false);
+  },
+
+  imageProcess: async (node, inputs, ctx) => {
+    const dataUrl = inputs.image;
+    if (!dataUrl) return;
+
+    const DIMENSIONS: Record<string, [number, number]> = {
+      "1:1": [1024, 1024], "2:3": [832, 1248], "3:2": [1248, 832],
+      "3:4": [864, 1184], "4:3": [1184, 864], "4:5": [896, 1152],
+      "5:4": [1152, 896], "9:16": [768, 1344], "16:9": [1344, 768],
+      "21:9": [1536, 672],
+    };
+
+    const aspectRatio = node.data.aspectRatio || "original";
+    const resolution = node.data.resolution || "1K";
+    const cropAnchor = node.data.cropAnchor || "MC";
+    const outputFormat = node.data.outputFormat || "original";
+    const quality = (node.data.quality ?? 95) / 100;
+
+    const img = new Image();
+    await new Promise<void>((resolve, reject) => {
+      img.onload = () => resolve();
+      img.onerror = reject;
+      img.src = dataUrl;
+    });
+
+    let dw = img.width;
+    let dh = img.height;
+
+    if (aspectRatio !== "original" && DIMENSIONS[aspectRatio]) {
+      const mult = resolution === "4K" ? 4 : resolution === "2K" ? 2 : 1;
+      [dw, dh] = DIMENSIONS[aspectRatio]!;
+      dw *= mult;
+      dh *= mult;
+    }
+
+    // Crop source region based on anchor
+    const srcAspect = img.width / img.height;
+    const dstAspect = dw / dh;
+    let sx = 0, sy = 0, sw = img.width, sh = img.height;
+    if (srcAspect > dstAspect) {
+      sw = img.height * dstAspect;
+      const anchorCol = cropAnchor[1] === "L" ? 0 : cropAnchor[1] === "R" ? 1 : 0.5;
+      sx = (img.width - sw) * anchorCol;
+    } else {
+      sh = img.width / dstAspect;
+      const anchorRow = cropAnchor[0] === "T" ? 0 : cropAnchor[0] === "B" ? 1 : 0.5;
+      sy = (img.height - sh) * anchorRow;
+    }
+
+    const canvas = new OffscreenCanvas(dw, dh);
+    const ctx2d = canvas.getContext("2d")!;
+    ctx2d.drawImage(img, sx, sy, sw, sh, 0, 0, dw, dh);
+
+    let mime = "image/png";
+    if (outputFormat === "jpg") mime = "image/jpeg";
+    else if (outputFormat === "webp") mime = "image/webp";
+    else if (outputFormat === "png") mime = "image/png";
+    else if (dataUrl.startsWith("data:")) {
+      const m = dataUrl.match(/^data:(image\/[^;]+)/);
+      if (m) mime = m[1]!;
+    }
+
+    const blob = await canvas.convertToBlob({ type: mime, quality });
+    const result = await new Promise<string>((resolve) => {
+      const reader = new FileReader();
+      reader.onloadend = () => resolve(reader.result as string);
+      reader.readAsDataURL(blob);
+    });
+
+    ctx.pushValue(node.id, "out", result);
+    ctx.setRunStatus("COMPLETED");
+  },
+
+  reviewNode: async (node, inputs, ctx) => {
+    const data = inputs.in;
+    ctx.setDisplayData(node.id, { data, status: "pending" }, false);
+
+    const result = await new Promise<any>((resolve, reject) => {
+      ctx.pendingApprovals.set(node.id, { resolve, reject });
+    });
+    ctx.pendingApprovals.delete(node.id);
+
+    if (result.action === "approve" || result.action === "edit") {
+      ctx.setDisplayData(node.id, { data: result.value, status: "approved" }, false);
+      ctx.pushValue(node.id, "out", result.value);
+    } else if (result.action === "rework") {
+      ctx.setDisplayData(node.id, { data, status: "reworking" }, false);
+      const incomingEdge = ctx.edges.find(
+        (e) => e.target === node.id && e.targetHandle === "in",
+      );
+      if (incomingEdge) {
+        await ctx.executeNode(incomingEdge.source);
+      }
+    } else {
+      ctx.setDisplayData(node.id, { data, status: "cancelled" }, false);
+    }
   },
 
   // Transformers.js executors
