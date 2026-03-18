@@ -1,5 +1,5 @@
 import { Background, Controls, MiniMap, ReactFlow } from "@xyflow/react";
-import { useCallback, useMemo, useState } from "react";
+import { useCallback, useEffect, useMemo, useState } from "react";
 
 import { ContextMenu } from "@/components/ContextMenu/ContextMenu.tsx";
 import { FullscreenModal } from "@/components/FullscreenModal.tsx";
@@ -19,6 +19,17 @@ import { edgeTypes, nodeTypes } from "@/nodes/registry.ts";
 export function FlowEditor() {
   const flow = useFlowState();
   const runner = useGraphRunner();
+
+  // Suppress benign ResizeObserver loop errors (common with dynamic node layouts)
+  useEffect(() => {
+    const handler = (e: ErrorEvent) => {
+      if (e.message?.includes("ResizeObserver loop")) {
+        e.stopImmediatePropagation();
+      }
+    };
+    window.addEventListener("error", handler);
+    return () => window.removeEventListener("error", handler);
+  }, []);
 
   const [hoveredEdgeId, setHoveredEdgeId] = useState<string | null>(null);
   const [infoNodeId, setInfoNodeId] = useState<string | null>(null);

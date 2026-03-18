@@ -27,10 +27,10 @@ src/
 │   ├── defaults.ts                 Centralized runtime constants
 │   ├── nodeDimensions.ts           Node size and title definitions
 │   ├── nodeInfo.ts                 Node descriptions and I/O specs
-│   ├── pipelineRegistry.ts         24 pipeline task definitions
-│   ├── modelClassRegistry.ts       20 model class definitions
+│   ├── pipelineRegistry.ts         22 pipeline task definitions
+│   ├── modelClassRegistry.ts       19 model class definitions
 │   ├── generationDefaults.ts       Generation parameter schema
-│   └── workflowRegistry.ts         40+ ready-made workflow definitions
+│   └── workflowRegistry.ts         50 ready-made workflow definitions
 ├── engine/
 │   ├── GraphRunner.ts              Topological graph execution with streaming
 │   ├── nodeExecutors.ts            Per-type executor dispatch
@@ -64,11 +64,11 @@ src/
 ├── nodes/
 │   ├── BaseNode.tsx                Shared node chrome (header, resize, timing)
 │   ├── registry.ts                 Node type and edge type registries
-│   ├── core/                       20 core node types
+│   ├── core/                       18 core node types
 │   └── transformers/               13 Transformers.js node types
 ├── macros/
 │   ├── macroFactory.ts             Unified PREBUILT_MACROS export
-│   ├── pipelineMacroFactory.ts     Auto-generates 24 pipeline macros
+│   ├── pipelineMacroFactory.ts     Auto-generates 22 pipeline macros
 │   ├── modelClassMacroFactory.ts   Auto-generates 19 model class macros
 │   └── openRouter.ts              OpenRouter API macro
 └── utils/
@@ -108,26 +108,27 @@ All settings persist to `localStorage` and are accessed via the `useSettings` ho
 
 ## Node Types
 
-### Core (20)
+### Core (18)
 
-| Node            | Description                                            |
-| --------------- | ------------------------------------------------------ |
-| Input Text      | Static string value                                    |
-| Media Input     | Unified image/audio/video with FILE/URL toggle         |
-| Output Text     | Rich visualization with auto-detection and copy        |
-| Output Image    | Image display with compare slider + annotation overlay |
-| Audio Output    | Audio playback                                         |
-| Custom Script   | Execute JavaScript with dynamic I/O ports              |
-| HTTP Request    | Fetch API with SSE streaming                           |
-| JSON Path       | Extract values via dot notation                        |
-| Macro Node      | Container for nested sub-workflows                     |
-| Batch Iterator  | Iterate arrays with progress, pause/resume/stop        |
-| Delay           | Pause execution for N milliseconds                     |
-| List Aggregator | Collect streamed items into a single array             |
-| Folder Input    | Directory picker with auto-categorization              |
-| Download Data   | Multi-format export (JSON/CSV/TXT/ZIP/media)           |
-| Image Process   | Aspect ratio, resolution, crop, format, quality        |
-| Review Node     | Manual approval gate with preview and inline edit      |
+| Node              | Description                                                   |
+| ----------------- | ------------------------------------------------------------- |
+| Input Text        | Static string value                                           |
+| Media Input       | Unified image/audio/video input with FILE/URL toggle          |
+| Folder Input      | Directory picker with auto-categorization by file type        |
+| Universal Output  | Adaptive display for any pipeline/model result with rich viz  |
+| Output Text       | Readonly text display with copy support                       |
+| Output Image      | Image display with before/after compare slider                |
+| Audio Output      | Audio playback with download                                  |
+| Download Data     | Multi-format export (JSON/CSV/TXT/ZIP/media)                  |
+| Custom Script     | Execute JavaScript with dynamic I/O ports                     |
+| HTTP Request      | Fetch API with SSE streaming                                  |
+| JSON Path         | Extract values via dot notation                               |
+| Image Process     | Aspect ratio, resolution, crop, format, quality               |
+| Macro Node        | Container for nested sub-workflows                            |
+| Batch Iterator    | Iterate arrays with progress, pause/resume/stop               |
+| Delay             | Pause execution for N milliseconds                            |
+| List Aggregator   | Collect streamed items into a single array                    |
+| Review Node       | Manual approval gate with preview and inline edit             |
 
 ### Transformers.js (13)
 
@@ -148,7 +149,7 @@ All settings persist to `localStorage` and are accessed via the `useSettings` ho
 
 ## Visualizations
 
-Output nodes auto-detect data shape and render with the appropriate visualization:
+The Universal Output node auto-detects data shape and renders the appropriate visualization:
 
 | Type               | Used By                              | Renders                          |
 | ------------------ | ------------------------------------ | -------------------------------- |
@@ -161,14 +162,16 @@ Output nodes auto-detect data shape and render with the appropriate visualizatio
 | Tensor Info        | Feature extraction                   | Shape, dtype, sample values      |
 | Transcript         | Speech recognition                   | Timestamped segments             |
 | Image Caption      | Image-to-text                        | Thumbnail with generated caption |
+| Image Compare      | Depth estimation, background removal | Before/after slider              |
 
 ## Workflow Registry
 
-**IMPORT > REGISTRY** provides 40+ ready-made workflows organized by category:
+**IMPORT > REGISTRY** provides 50 ready-made workflows organized by category:
 
-- **Pipeline workflows (22)** — One per task, pre-configured with default model and sample data
+- **Pipeline workflows (24)** — One per task, pre-configured with default model and sample data
 - **Batch processing (3)** — Folder input with progress tracking (image captioning, text classification, background removal)
-- **Model class workflows (19)** — Multi-node workflows using individual Transformers.js nodes (generate-mode or call-mode)
+- **Model class workflows (20)** — Multi-node workflows using individual Transformers.js nodes (generate-mode or call-mode)
+- **Additional workflows (3)** — OpenRouter LLM, feature extraction similarity, Jina CLIP v2
 
 Model sizes are shown with color-coded badges (green < 100 MB, yellow < 500 MB, red > 500 MB).
 
@@ -239,7 +242,7 @@ bun run test:sizes     # Check default model sizes (flags > 1 GB)
 bun run test:models    # Full integration test (download + inference)
 ```
 
-Integration tests cover all 20 model classes with real model downloads, forward pass verification, and generate + decode verification.
+Integration tests cover all 19 model classes with real model downloads, forward pass verification, and generate + decode verification.
 
 ## Tech Stack
 

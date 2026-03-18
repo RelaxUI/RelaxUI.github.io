@@ -28,6 +28,7 @@ export function getNodeMenuItems(currentView: string | null): MenuItem[] {
   items.push({ type: "folderInput", label: "Folder Input", category: "Inputs" });
 
   // ── Outputs ──
+  items.push({ type: "universalOutput", label: "Universal Output", category: "Outputs" });
   items.push({ type: "outputText", label: "Text Output", category: "Outputs" });
   items.push({ type: "outputImage", label: "Image Output", category: "Outputs" });
   items.push({ type: "audioOutput", label: "Audio Output", category: "Outputs" });

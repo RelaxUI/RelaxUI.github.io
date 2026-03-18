@@ -19,6 +19,7 @@ import { MacroNode } from "@/nodes/core/MacroNode.tsx";
 import { MacroPortNode } from "@/nodes/core/MacroPortNode.tsx";
 import { OutputImageNode } from "@/nodes/core/OutputImageNode.tsx";
 import { OutputTextNode } from "@/nodes/core/OutputTextNode.tsx";
+import { UniversalOutputNode } from "@/nodes/core/UniversalOutputNode.tsx";
 
 // Transformers.js nodes
 import { CompanionLoaderNode } from "@/nodes/transformers/CompanionLoaderNode.tsx";
@@ -46,6 +47,7 @@ export const nodeTypes: Record<string, any> = {
   jsonPath: JsonPathNode,
   outputText: OutputTextNode,
   outputImage: OutputImageNode,
+  universalOutput: UniversalOutputNode,
   macroNode: MacroNode,
   macroInEdge: MacroPortNode,
   macroInParam: MacroPortNode,
@@ -120,7 +122,10 @@ export const getNodeHandles = (
   } else if (node.type === "outputImage") {
     handles.targets.push({ id: "in1", label: "IMAGE", offsetY: 80 });
     handles.targets.push({ id: "in2", label: "IMAGE 2", offsetY: 130 });
-    handles.targets.push({ id: "annotations", label: "ANNOTATIONS", offsetY: 180 });
+  } else if (node.type === "universalOutput") {
+    handles.targets.push({ id: "data", label: "DATA", offsetY: 70 });
+    handles.targets.push({ id: "img1", label: "IMAGE 1", offsetY: 100 });
+    handles.targets.push({ id: "img2", label: "IMAGE 2", offsetY: 130 });
   } else if (
     ["macroInEdge", "macroInParam", "macroConnections"].includes(node.type)
   ) {

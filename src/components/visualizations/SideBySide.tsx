@@ -24,22 +24,22 @@ export function SideBySide({
   }
 
   return (
-    <div className="flex gap-2 w-full">
+    <div className="flex gap-2 w-full h-full min-h-0">
       {sourceText && (
-        <div className="flex-1 flex flex-col gap-1 min-w-0">
-          <span className="text-[8px] text-(--relax-text-muted) font-bold tracking-widest">
+        <div className="flex-1 flex flex-col gap-1 min-w-0 min-h-0">
+          <span className="text-[8px] text-(--relax-text-muted) font-bold tracking-widest shrink-0">
             ORIGINAL
           </span>
-          <div className="text-[10px] font-mono text-(--relax-text-default) bg-(--relax-bg-primary) rounded p-2 overflow-y-auto custom-scrollbar max-h-40 leading-relaxed">
+          <div className="text-[10px] font-mono text-(--relax-text-default) bg-(--relax-bg-primary) rounded p-2 overflow-y-auto custom-scrollbar flex-1 min-h-0 leading-relaxed">
             {sourceText}
           </div>
         </div>
       )}
-      <div className="flex-1 flex flex-col gap-1 min-w-0">
-        <span className="text-[8px] text-(--relax-accent) font-bold tracking-widest">
+      <div className="flex-1 flex flex-col gap-1 min-w-0 min-h-0">
+        <span className="text-[8px] text-(--relax-accent) font-bold tracking-widest shrink-0">
           RESULT
         </span>
-        <div className="text-[10px] font-mono text-white bg-(--relax-bg-primary) rounded p-2 overflow-y-auto custom-scrollbar max-h-40 leading-relaxed">
+        <div className="text-[10px] font-mono text-white bg-(--relax-bg-primary) rounded p-2 overflow-y-auto custom-scrollbar flex-1 min-h-0 leading-relaxed">
           {resultText}
         </div>
       </div>

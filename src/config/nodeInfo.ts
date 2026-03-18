@@ -36,6 +36,11 @@ export const NODE_INFO: Record<string, NodeInfo> = {
     in: "in1 (Image), in2 (Image)",
     out: "None",
   },
+  universalOutput: {
+    desc: "Adaptive output node. Displays pipeline/model results with rich visualizations (NER, charts, segmentation, depth maps, etc.), image comparison, and raw data. Supports copy and download.",
+    in: "data (Any pipeline/model result), img1 (Image), img2 (Image)",
+    out: "None",
+  },
   macroNode: {
     desc: "A container for nested workflow logic. Double click to enter.",
     in: "Dynamic",

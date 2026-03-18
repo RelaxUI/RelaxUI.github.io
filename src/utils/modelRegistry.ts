@@ -233,8 +233,9 @@ export class ModelRegistry {
 
   /**
    * Clears all Transformers.js cached models from the browser's Cache API.
+   * Returns `true` on success, `false` on failure.
    */
-  static async clear_cache_all() {
+  static async clear_cache_all(): Promise<boolean> {
     try {
       const cacheKeys = await caches.keys();
       for (const key of cacheKeys) {
@@ -242,12 +243,9 @@ export class ModelRegistry {
           await caches.delete(key);
         }
       }
-      alert("Browser cache cleared successfully!");
-    } catch (e) {
-      console.error(e);
-      alert(
-        "Failed to clear cache. Your browser might not support this operation.",
-      );
+      return true;
+    } catch {
+      return false;
     }
   }
 }

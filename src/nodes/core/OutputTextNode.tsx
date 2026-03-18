@@ -1,35 +1,50 @@
-import { VisualizationRenderer } from "@/components/visualizations/VisualizationRenderer.tsx";
 import { RuntimeContext } from "@/context/RuntimeContext.ts";
 import { BaseNode } from "@/nodes/BaseNode.tsx";
-import { useCallback, useContext, useState } from "react";
+import { useCallback, useContext, useEffect, useRef, useState } from "react";
 
-function sanitizeForCopy(val: any): string {
+function toText(val: any): string {
   if (val == null) return "";
   if (typeof val === "string") return val;
-  const data = val?.data ?? val;
+  // Unwrap pipeline envelope
+  const inner = val?.data ?? val;
+  if (typeof inner === "string") return inner;
   try {
-    return JSON.stringify(data, null, 2);
+    return JSON.stringify(inner, null, 2);
   } catch {
-    return String(data);
+    return String(inner);
   }
 }
 
 export const OutputTextNode = (props: any) => {
   const { displayData } = useContext(RuntimeContext)!;
   const raw = displayData[props.id];
+  const text = toText(raw);
   const [copied, setCopied] = useState(false);
+  const textareaRef = useRef<HTMLTextAreaElement>(null);
+
+  useEffect(() => {
+    if (textareaRef.current && textareaRef.current !== document.activeElement) {
+      textareaRef.current.value = text;
+    }
+  }, [text]);
 
   const handleCopy = useCallback(() => {
-    const text = sanitizeForCopy(raw);
     navigator.clipboard.writeText(text).then(() => {
       setCopied(true);
       setTimeout(() => setCopied(false), 1500);
     });
-  }, [raw]);
+  }, [text]);
 
   return (
     <BaseNode {...props}>
-      <div className="relative nowheel nodrag flex-1 w-full bg-(--relax-bg-primary)/60 border border-(--relax-border) rounded p-2 text-xs font-mono text-white overflow-y-auto whitespace-pre-wrap custom-scrollbar">
+      <div className="relative flex-1 w-full min-h-0 flex flex-col">
+        <textarea
+          ref={textareaRef}
+          readOnly
+          defaultValue={text}
+          className="nowheel nodrag flex-1 w-full bg-(--relax-bg-primary)/60 border border-(--relax-border) rounded p-2 text-xs font-mono text-white focus:outline-none focus:border-(--relax-accent) resize-none custom-scrollbar"
+          placeholder="Waiting for data..."
+        />
         {raw != null && (
           <button
             onClick={handleCopy}
@@ -38,11 +53,6 @@ export const OutputTextNode = (props: any) => {
           >
             {copied ? "COPIED" : "COPY"}
           </button>
-        )}
-        {raw != null ? (
-          <VisualizationRenderer data={raw} />
-        ) : (
-          <span className="opacity-30">Waiting for data...</span>
         )}
       </div>
     </BaseNode>

@@ -8,6 +8,7 @@ export const NODE_DIMENSIONS: Record<string, NodeDimension> = {
   jsonPath: { w: 220, h: 100, title: "JSON PATH", sub: "extract data" },
   outputText: { w: 280, h: 280, title: "OUTPUT TEXT", sub: "stream render" },
   outputImage: { w: 280, h: 260, title: "OUTPUT IMAGE", sub: "image render" },
+  universalOutput: { w: 320, h: 320, title: "UNIVERSAL OUTPUT", sub: "auto display" },
   macroNode: { w: 260, h: 220, title: "MACRO NODE", sub: "sub-graph logic" },
   macroInEdge: { w: 180, h: 100, title: "MACRO IN (edge)", sub: "edge" },
   macroInParam: { w: 180, h: 100, title: "MACRO IN (param)", sub: "param" },

@@ -1,98 +1,65 @@
 import { ImageCompareSlider } from "@/components/ImageCompareSlider.tsx";
-import { BoundingBoxOverlay } from "@/components/visualizations/BoundingBoxOverlay.tsx";
-import { SegmentationOverlay } from "@/components/visualizations/SegmentationOverlay.tsx";
 import { RuntimeContext } from "@/context/RuntimeContext.ts";
 import { BaseNode } from "@/nodes/BaseNode.tsx";
-import { useContext } from "react";
+import { useCallback, useContext } from "react";
 
-const FullscreenButton = ({
-  onClick,
-}: {
-  onClick: (e: React.MouseEvent) => void;
-}) => (
-  <button
-    onClick={onClick}
-    className="absolute bottom-2 right-2 bg-(--relax-bg-primary)/90 text-white border border-(--relax-border-hover) rounded p-1.5 opacity-0 group-hover:opacity-100 hover:text-(--relax-accent) hover:border-(--relax-accent) transition-all shadow-lg z-30 nodrag"
-    title="Fullscreen"
-  >
-    <svg
-      className="w-3.5 h-3.5"
-      fill="none"
-      viewBox="0 0 24 24"
-      stroke="currentColor"
-    >
-      <path
-        strokeLinecap="round"
-        strokeLinejoin="round"
-        strokeWidth={2}
-        d="M4 8V4m0 0h4M4 4l5 5m11-1V4m0 0h-4m4 0l-5 5M4 16v4m0 0h4m-4 0l5-5m11 5l-5-5m5 5v-4m0 4h-4"
-      />
-    </svg>
-  </button>
-);
+/** Unwrap pipeline envelope to data URL */
+function unwrap(v: any): string | undefined {
+  if (!v) return undefined;
+  if (typeof v === "string") return v;
+  if (typeof v === "object" && v._visualization && typeof v.data === "string") return v.data;
+  return undefined;
+}
 
 export const OutputImageNode = (props: any) => {
   const { displayData, setFullscreenImage } = useContext(RuntimeContext)!;
   const data = displayData[props.id];
-  const hasIn1 = !!data?.in1;
-  const hasIn2 = !!data?.in2;
-  const hasAnnotations = !!data?.annotations;
+  const img1 = unwrap(data?.in1);
+  const img2 = unwrap(data?.in2);
+  const hasImages = !!(img1 || img2);
 
-  // Determine annotation type
-  const annotations = data?.annotations;
-  const annotationData = annotations?._visualization
-    ? annotations.data
-    : annotations;
-  const isBoundingBoxes =
-    Array.isArray(annotationData) &&
-    annotationData.length > 0 &&
-    annotationData[0]?.box;
-  const isSegmentation =
-    Array.isArray(annotationData) &&
-    annotationData.length > 0 &&
-    annotationData[0]?.label &&
-    !annotationData[0]?.box;
+  const handleDownload = useCallback(() => {
+    const src = img2 || img1;
+    if (!src) return;
+    const a = document.createElement("a");
+    a.href = src;
+    a.download = "image.png";
+    a.click();
+  }, [img1, img2]);
 
   return (
     <BaseNode {...props}>
       <div
-        className={`relative flex-1 w-full bg-(--relax-bg-primary)/60 border border-(--relax-border) rounded overflow-hidden nodrag nowheel ${hasIn1 || hasIn2 ? "min-h-45" : "flex items-center justify-center"}`}
+        className={`relative flex-1 w-full bg-(--relax-bg-primary)/60 border border-(--relax-border) rounded overflow-hidden nodrag nowheel ${hasImages ? "" : "flex items-center justify-center"}`}
       >
-        {hasAnnotations && hasIn1 && isBoundingBoxes ? (
-          <div className="relative">
-            <BoundingBoxOverlay
-              imageUrl={data.in1}
-              detections={annotationData}
-            />
-            <FullscreenButton
-              onClick={(e) => {
-                e.stopPropagation();
-                setFullscreenImage({
-                  in1: data.in1,
-                  annotations: annotationData,
-                  _boundingBoxes: true,
-                });
-              }}
-            />
-          </div>
-        ) : hasAnnotations && hasIn1 && isSegmentation ? (
-          <div className="flex flex-col gap-2 p-2">
-            <img
-              src={data.in1}
-              alt="Source"
-              className="max-h-37.5 rounded object-contain"
-            />
-            <SegmentationOverlay data={annotationData} />
-          </div>
-        ) : hasIn1 || hasIn2 ? (
+        {hasImages ? (
           <>
-            <ImageCompareSlider img1={data.in1} img2={data.in2} />
-            <FullscreenButton
-              onClick={(e) => {
-                e.stopPropagation();
-                setFullscreenImage(data);
-              }}
-            />
+            <ImageCompareSlider img1={img1} img2={img2} />
+            <div className="absolute bottom-2 right-2 flex gap-1 z-30 opacity-0 group-hover:opacity-100 transition-opacity">
+              <button
+                onClick={handleDownload}
+                className="bg-(--relax-bg-primary)/90 text-white border border-(--relax-border-hover) rounded p-1.5 hover:text-(--relax-accent) hover:border-(--relax-accent) transition-all shadow-lg nodrag"
+                title="Download"
+              >
+                <svg className="w-3.5 h-3.5" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M4 16v1a3 3 0 003 3h10a3 3 0 003-3v-1m-4-4l-4 4m0 0l-4-4m4 4V4" />
+                </svg>
+              </button>
+              <button
+                onClick={(e) => {
+                  e.stopPropagation();
+                  setFullscreenImage(
+                    img1 && img2 ? { in1: img1, in2: img2 } : img1 || img2,
+                  );
+                }}
+                className="bg-(--relax-bg-primary)/90 text-white border border-(--relax-border-hover) rounded p-1.5 hover:text-(--relax-accent) hover:border-(--relax-accent) transition-all shadow-lg nodrag"
+                title="Fullscreen"
+              >
+                <svg className="w-3.5 h-3.5" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M4 8V4m0 0h4M4 4l5 5m11-1V4m0 0h-4m4 0l-5 5M4 16v4m0 0h4m-4 0l5-5m11 5l-5-5m5 5v-4m0 4h-4" />
+                </svg>
+              </button>
+            </div>
           </>
         ) : (
           <span className="opacity-30 text-xs font-mono text-white pointer-events-none">

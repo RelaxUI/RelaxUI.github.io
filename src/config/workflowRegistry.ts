@@ -69,7 +69,7 @@ interface InputSpec {
 }
 
 interface OutputSpec {
-  type: "outputText" | "outputImage" | "audioOutput";
+  type: "outputText" | "outputImage" | "audioOutput" | "universalOutput";
   label: string;
   handleId: string;
   targetHandle?: string;
@@ -86,6 +86,7 @@ function createPipelineWorkflow(
   inputs: InputSpec[],
   outputs: OutputSpec[],
   extraConnections?: ExtraConnection[],
+  options?: { modelId?: string; label?: string },
 ): { nodes: FlowNode[]; edges: Edge[] } {
   const taskDef = PIPELINE_TASKS[taskKey]!;
   const nodes: FlowNode[] = [];
@@ -99,9 +100,9 @@ function createPipelineWorkflow(
     macroId: null,
     data: {
       task: taskKey,
-      model_id: taskDef.defaultModel,
+      model_id: options?.modelId || taskDef.defaultModel,
       device: getDefaultDevice(),
-      label: taskDef.label,
+      label: options?.label || taskDef.label,
     },
   });
 
@@ -136,14 +137,16 @@ function createPipelineWorkflow(
       macroId: null,
       data: { label: out.label },
     });
+    const defaultTarget =
+      out.type === "audioOutput" ? "audio"
+      : out.type === "universalOutput" ? "data"
+      : "in";
     edges.push({
       id: generateId("e"),
       source: pipelineId,
       sourceHandle: out.handleId,
       target: id,
-      targetHandle:
-        out.targetHandle ||
-        (out.type === "audioOutput" ? "audio" : "in"),
+      targetHandle: out.targetHandle || defaultTarget,
     });
   });
 
@@ -190,10 +193,9 @@ export const WORKFLOW_REGISTRY: RegistryWorkflow[] = [
         ],
         [
           {
-            type: "outputText",
+            type: "universalOutput",
             label: "Classification Result",
             handleId: "result",
-            targetHandle: "in",
           },
         ],
       ),
@@ -219,10 +221,9 @@ export const WORKFLOW_REGISTRY: RegistryWorkflow[] = [
         ],
         [
           {
-            type: "outputText",
+            type: "universalOutput",
             label: "NER Result",
             handleId: "result",
-            targetHandle: "in",
           },
         ],
       ),
@@ -254,10 +255,9 @@ export const WORKFLOW_REGISTRY: RegistryWorkflow[] = [
         ],
         [
           {
-            type: "outputText",
+            type: "universalOutput",
             label: "Answer",
             handleId: "result",
-            targetHandle: "in",
           },
         ],
       ),
@@ -282,10 +282,9 @@ export const WORKFLOW_REGISTRY: RegistryWorkflow[] = [
         ],
         [
           {
-            type: "outputText",
+            type: "universalOutput",
             label: "Predictions",
             handleId: "result",
-            targetHandle: "in",
           },
         ],
       ),
@@ -310,10 +309,9 @@ export const WORKFLOW_REGISTRY: RegistryWorkflow[] = [
         ],
         [
           {
-            type: "outputText",
+            type: "universalOutput",
             label: "Summary Result",
             handleId: "result",
-            targetHandle: "in",
           },
         ],
       ),
@@ -338,10 +336,9 @@ export const WORKFLOW_REGISTRY: RegistryWorkflow[] = [
         ],
         [
           {
-            type: "outputText",
+            type: "universalOutput",
             label: "Generated Text",
             handleId: "result",
-            targetHandle: "in",
           },
         ],
       ),
@@ -378,10 +375,9 @@ export const WORKFLOW_REGISTRY: RegistryWorkflow[] = [
         ],
         [
           {
-            type: "outputText",
+            type: "universalOutput",
             label: "Translation",
             handleId: "result",
-            targetHandle: "in",
           },
         ],
       ),
@@ -413,10 +409,9 @@ export const WORKFLOW_REGISTRY: RegistryWorkflow[] = [
         ],
         [
           {
-            type: "outputText",
+            type: "universalOutput",
             label: "Classification Result",
             handleId: "result",
-            targetHandle: "in",
           },
         ],
       ),
@@ -442,10 +437,9 @@ export const WORKFLOW_REGISTRY: RegistryWorkflow[] = [
         ],
         [
           {
-            type: "outputText",
+            type: "universalOutput",
             label: "Embeddings",
             handleId: "result",
-            targetHandle: "in",
           },
         ],
       ),
@@ -472,10 +466,9 @@ export const WORKFLOW_REGISTRY: RegistryWorkflow[] = [
         ],
         [
           {
-            type: "outputText",
+            type: "universalOutput",
             label: "Classification Result",
             handleId: "result",
-            targetHandle: "in",
           },
         ],
       ),
@@ -501,19 +494,12 @@ export const WORKFLOW_REGISTRY: RegistryWorkflow[] = [
         ],
         [
           {
-            type: "outputText",
+            type: "universalOutput",
             label: "Detection Result",
             handleId: "result",
-            targetHandle: "in",
-          },
-          {
-            type: "outputImage",
-            label: "Annotated Image",
-            handleId: "result",
-            targetHandle: "annotations",
           },
         ],
-        [{ sourceIdx: 0, targetIdx: 1, targetHandle: "in1" }],
+        [{ sourceIdx: 0, targetIdx: 0, targetHandle: "img1" }],
       ),
   },
   {
@@ -536,19 +522,12 @@ export const WORKFLOW_REGISTRY: RegistryWorkflow[] = [
         ],
         [
           {
-            type: "outputText",
+            type: "universalOutput",
             label: "Segmentation Result",
             handleId: "result",
-            targetHandle: "in",
-          },
-          {
-            type: "outputImage",
-            label: "Segmented Image",
-            handleId: "result",
-            targetHandle: "annotations",
           },
         ],
-        [{ sourceIdx: 0, targetIdx: 1, targetHandle: "in1" }],
+        [{ sourceIdx: 0, targetIdx: 0, targetHandle: "img1" }],
       ),
   },
   {
@@ -571,19 +550,13 @@ export const WORKFLOW_REGISTRY: RegistryWorkflow[] = [
         ],
         [
           {
-            type: "outputText",
-            label: "Depth Data",
-            handleId: "result",
-            targetHandle: "in",
-          },
-          {
-            type: "outputImage",
+            type: "universalOutput",
             label: "Depth Map",
             handleId: "depth_map",
-            targetHandle: "in2",
+            targetHandle: "img2",
           },
         ],
-        [{ sourceIdx: 0, targetIdx: 1, targetHandle: "in1" }],
+        [{ sourceIdx: 0, targetIdx: 0, targetHandle: "img1" }],
       ),
   },
   {
@@ -606,13 +579,13 @@ export const WORKFLOW_REGISTRY: RegistryWorkflow[] = [
         ],
         [
           {
-            type: "outputImage",
+            type: "universalOutput",
             label: "Result",
             handleId: "result",
-            targetHandle: "in2",
+            targetHandle: "img2",
           },
         ],
-        [{ sourceIdx: 0, targetIdx: 0, targetHandle: "in1" }],
+        [{ sourceIdx: 0, targetIdx: 0, targetHandle: "img1" }],
       ),
   },
   {
@@ -635,13 +608,13 @@ export const WORKFLOW_REGISTRY: RegistryWorkflow[] = [
         ],
         [
           {
-            type: "outputImage",
+            type: "universalOutput",
             label: "Result",
             handleId: "result",
-            targetHandle: "in2",
+            targetHandle: "img2",
           },
         ],
-        [{ sourceIdx: 0, targetIdx: 0, targetHandle: "in1" }],
+        [{ sourceIdx: 0, targetIdx: 0, targetHandle: "img1" }],
       ),
   },
   {
@@ -665,10 +638,9 @@ export const WORKFLOW_REGISTRY: RegistryWorkflow[] = [
         ],
         [
           {
-            type: "outputText",
+            type: "universalOutput",
             label: "Feature Vectors",
             handleId: "result",
-            targetHandle: "in",
           },
         ],
       ),
@@ -695,10 +667,9 @@ export const WORKFLOW_REGISTRY: RegistryWorkflow[] = [
         ],
         [
           {
-            type: "outputText",
+            type: "universalOutput",
             label: "Transcription",
             handleId: "result",
-            targetHandle: "in",
           },
         ],
       ),
@@ -725,10 +696,9 @@ export const WORKFLOW_REGISTRY: RegistryWorkflow[] = [
         ],
         [
           {
-            type: "outputText",
+            type: "universalOutput",
             label: "Classification Result",
             handleId: "result",
-            targetHandle: "in",
           },
         ],
       ),
@@ -783,10 +753,9 @@ export const WORKFLOW_REGISTRY: RegistryWorkflow[] = [
         ],
         [
           {
-            type: "outputText",
+            type: "universalOutput",
             label: "Caption",
             handleId: "result",
-            targetHandle: "in",
           },
         ],
       ),
@@ -817,10 +786,9 @@ export const WORKFLOW_REGISTRY: RegistryWorkflow[] = [
         ],
         [
           {
-            type: "outputText",
+            type: "universalOutput",
             label: "Answer",
             handleId: "result",
-            targetHandle: "in",
           },
         ],
       ),
@@ -852,10 +820,9 @@ export const WORKFLOW_REGISTRY: RegistryWorkflow[] = [
         ],
         [
           {
-            type: "outputText",
+            type: "universalOutput",
             label: "Classification Result",
             handleId: "result",
-            targetHandle: "in",
           },
         ],
       ),
@@ -887,19 +854,12 @@ export const WORKFLOW_REGISTRY: RegistryWorkflow[] = [
         ],
         [
           {
-            type: "outputText",
+            type: "universalOutput",
             label: "Detection Result",
             handleId: "result",
-            targetHandle: "in",
-          },
-          {
-            type: "outputImage",
-            label: "Annotated Image",
-            handleId: "result",
-            targetHandle: "annotations",
           },
         ],
-        [{ sourceIdx: 0, targetIdx: 1, targetHandle: "in1" }],
+        [{ sourceIdx: 0, targetIdx: 0, targetHandle: "img1" }],
       ),
   },
   {
@@ -929,10 +889,9 @@ export const WORKFLOW_REGISTRY: RegistryWorkflow[] = [
         ],
         [
           {
-            type: "outputText",
+            type: "universalOutput",
             label: "Classification Result",
             handleId: "result",
-            targetHandle: "in",
           },
         ],
       ),
@@ -1972,13 +1931,14 @@ WORKFLOW_REGISTRY.push(
         ],
         [
           {
-            type: "outputImage",
+            type: "universalOutput",
             label: "Result",
             handleId: "result",
-            targetHandle: "in1",
+            targetHandle: "img2",
           },
         ],
-        [{ sourceIdx: 0, targetIdx: 0, targetHandle: "in2" }],
+        [{ sourceIdx: 0, targetIdx: 0, targetHandle: "img1" }],
+        { modelId: "briaai/RMBG-2.0", label: "Background Removal (BRIA)" },
       ),
   },
   {
@@ -2008,6 +1968,8 @@ WORKFLOW_REGISTRY.push(
             targetHandle: "audio",
           },
         ],
+        undefined,
+        { modelId: "onnx-community/Kokoro-82M-ONNX", label: "Kokoro TTS" },
       ),
   },
   {
@@ -2031,12 +1993,13 @@ WORKFLOW_REGISTRY.push(
         ],
         [
           {
-            type: "outputText",
+            type: "universalOutput",
             label: "Embedding Info",
             handleId: "result",
-            targetHandle: "in",
           },
         ],
+        undefined,
+        { modelId: "jinaai/jina-clip-v2", label: "Jina CLIP v2" },
       ),
   },
   {

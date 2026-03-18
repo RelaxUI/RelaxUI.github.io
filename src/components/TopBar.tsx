@@ -70,7 +70,12 @@ export function TopBar({
 
   const handleClearModelCache = useCallback(async () => {
     const { ModelRegistry } = await import("@/utils/modelRegistry.ts");
-    await ModelRegistry.clear_cache_all();
+    const ok = await ModelRegistry.clear_cache_all();
+    alert(
+      ok
+        ? "Browser cache cleared successfully!"
+        : "Failed to clear cache. Your browser might not support this operation.",
+    );
     setMenuOpen(false);
   }, []);
 
@@ -91,7 +96,7 @@ export function TopBar({
     "w-full text-left px-3 py-2 text-[10px] font-bold text-(--relax-error) hover:bg-(--relax-error)/10 rounded transition-colors";
 
   return (
-    <div className="w-full bg-(--relax-bg-primary)/90 backdrop-blur-md border-b border-(--relax-border) flex items-center px-2 sm:px-6 py-2 sm:py-3 z-30 shadow-[0_4px_20px_rgba(0,0,0,0.4)] text-xs font-mono tracking-widest justify-between relative gap-1 sm:gap-0">
+    <div className="w-full bg-(--relax-bg-primary)/90 backdrop-blur-md border-b border-(--relax-border) flex items-center px-2 sm:px-4 md:px-6 py-2 sm:py-3 z-30 shadow-[0_4px_20px_rgba(0,0,0,0.4)] text-xs font-mono tracking-widest justify-between relative gap-1 sm:gap-2">
       {/* ── Left: Logo + (desktop) Undo/Redo ── */}
       <div className="flex items-center gap-2 sm:gap-3 shrink-0">
         <div className="w-6 h-6 rounded bg-linear-to-tr from-(--relax-accent) to-[#007acc] flex items-center justify-center shadow-[0_0_10px_rgba(0,229,255,0.4)]">
@@ -131,7 +136,7 @@ export function TopBar({
       {/* ── Center: Breadcrumbs ── */}
 
       {/* Desktop breadcrumbs — full path in a pill */}
-      <div className="absolute left-1/2 top-1/2 -translate-x-1/2 -translate-y-1/2 hidden sm:flex items-center gap-2 bg-(--relax-bg-elevated) border border-(--relax-border) px-4 py-1.5 rounded-full shadow-inner whitespace-nowrap overflow-hidden max-w-[40%] custom-scrollbar overflow-x-auto">
+      <div className="hidden sm:flex items-center gap-2 bg-(--relax-bg-elevated) border border-(--relax-border) px-4 py-1.5 rounded-full shadow-inner whitespace-nowrap overflow-hidden flex-1 min-w-0 max-w-md mx-auto custom-scrollbar overflow-x-auto">
         <span
           className={`cursor-pointer transition-colors flex items-center gap-1.5 shrink-0 ${!currentView ? "text-(--relax-accent) font-bold drop-shadow-[0_0_5px_rgba(0,229,255,0.5)]" : "text-(--relax-text-muted) hover:text-white"}`}
           onClick={() => setCurrentView(null)}
@@ -183,7 +188,7 @@ export function TopBar({
       )}
 
       {/* ── Right: Actions ── */}
-      <div className="flex items-center gap-1.5 sm:gap-3 shrink-0">
+      <div className="flex items-center gap-1.5 sm:gap-2 md:gap-3 shrink-0">
         {/* Add node */}
         <button
           onClick={openNodePicker}

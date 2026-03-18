@@ -53,7 +53,13 @@ export function HighlightedText({
       const ent = entities[i]!;
       if (ent.start > lastEnd) {
         segments.push(
-          <span key={`t-${i}`}>{sourceText.slice(lastEnd, ent.start)}</span>,
+          <span
+            key={`t-${i}`}
+            className="px-0.5 py-px rounded-sm"
+            style={{ backgroundColor: "rgba(255,255,255,0.06)" }}
+          >
+            {sourceText.slice(lastEnd, ent.start)}
+          </span>,
         );
       }
       const entityType = ent.entity_group || ent.entity;
@@ -61,7 +67,7 @@ export function HighlightedText({
       segments.push(
         <span
           key={`e-${i}`}
-          className="px-0.5 rounded-sm text-white font-bold"
+          className="px-0.5 py-px rounded-sm text-white font-bold"
           style={{ backgroundColor: `${color}40`, borderBottom: `2px solid ${color}` }}
           title={`${entityType} (${(ent.score * 100).toFixed(1)}%)`}
         >
@@ -71,12 +77,20 @@ export function HighlightedText({
       lastEnd = ent.end;
     }
     if (lastEnd < sourceText.length) {
-      segments.push(<span key="tail">{sourceText.slice(lastEnd)}</span>);
+      segments.push(
+        <span
+          key="tail"
+          className="px-0.5 py-px rounded-sm"
+          style={{ backgroundColor: "rgba(255,255,255,0.06)" }}
+        >
+          {sourceText.slice(lastEnd)}
+        </span>,
+      );
     }
 
     return (
       <div className="flex flex-col gap-2">
-        <div className="text-xs font-mono leading-relaxed text-(--relax-text-default)">
+        <div className="text-xs font-mono leading-relaxed text-(--relax-text-default) flex flex-wrap gap-y-1">
           {segments}
         </div>
         <div className="flex flex-wrap gap-1.5 mt-1">
@@ -96,7 +110,7 @@ export function HighlightedText({
     );
   }
 
-  // Fallback: just show entity tags
+  // Fallback: just show entity tags (all with consistent badge styling)
   return (
     <div className="flex flex-wrap gap-1">
       {entities.map((ent, i) => {

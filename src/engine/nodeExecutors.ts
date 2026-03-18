@@ -108,8 +108,8 @@ const executors: Record<string, Executor> = {
       let text = await res.text();
       try {
         text = JSON.parse(text).error.message || text;
-      } catch (_e) {
-        /* ignore */
+      } catch {
+        // Response body is not JSON; use raw text
       }
       throw new Error(`${res.status}: ${text}`);
     }
@@ -139,8 +139,8 @@ const executors: Record<string, Executor> = {
             try {
               const parsed = JSON.parse(d);
               ctx.pushValue(node.id, "out", parsed, true);
-            } catch (_e) {
-              console.error("JSON parse error on stream chunk", _e);
+            } catch {
+              // Malformed SSE chunk; skip
             }
           }
         }
@@ -175,7 +175,20 @@ const executors: Record<string, Executor> = {
   outputImage: (node, inputs, ctx) => {
     ctx.setDisplayData(
       node.id,
-      { in1: inputs.in1, in2: inputs.in2, annotations: inputs.annotations },
+      { in1: inputs.in1, in2: inputs.in2 },
+      false,
+    );
+  },
+
+  universalOutput: (node, inputs, ctx) => {
+    // Unwrap pipeline envelopes for image handles only
+    const unwrap = (v: any) =>
+      v && typeof v === "object" && v._visualization ? v.data : v;
+    const img1 = unwrap(inputs.img1);
+    const img2 = unwrap(inputs.img2);
+    ctx.setDisplayData(
+      node.id,
+      { data: inputs.data, img1, img2 },
       false,
     );
   },
@@ -202,7 +215,7 @@ const executors: Record<string, Executor> = {
       try {
         list = JSON.parse(list);
       } catch {
-        /* not JSON */
+        // Input is a plain string, not a JSON array
       }
     }
     if (!Array.isArray(list)) return;

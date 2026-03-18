@@ -72,6 +72,87 @@ function parseDtype(dtype: any): any {
   }
 }
 
+/** Convert raw pixel data {data, width, height, channels} to a data URL */
+async function rawPixelsToDataUrl(raw: any): Promise<string> {
+  const w = raw.width;
+  const h = raw.height;
+  const channels = raw.channels || 4;
+  const srcData = raw.data instanceof Uint8ClampedArray
+    ? raw.data
+    : new Uint8ClampedArray(raw.data);
+
+  // Ensure RGBA format
+  let rgba: Uint8ClampedArray;
+  if (channels === 4) {
+    rgba = srcData;
+  } else if (channels === 3) {
+    rgba = new Uint8ClampedArray(w * h * 4);
+    for (let i = 0; i < w * h; i++) {
+      rgba[i * 4] = srcData[i * 3]!;
+      rgba[i * 4 + 1] = srcData[i * 3 + 1]!;
+      rgba[i * 4 + 2] = srcData[i * 3 + 2]!;
+      rgba[i * 4 + 3] = 255;
+    }
+  } else if (channels === 1) {
+    rgba = new Uint8ClampedArray(w * h * 4);
+    for (let i = 0; i < w * h; i++) {
+      rgba[i * 4] = rgba[i * 4 + 1] = rgba[i * 4 + 2] = srcData[i]!;
+      rgba[i * 4 + 3] = 255;
+    }
+  } else {
+    rgba = srcData;
+  }
+
+  const canvas = new OffscreenCanvas(w, h);
+  const ctx2d = canvas.getContext("2d")!;
+  ctx2d.putImageData(new ImageData(rgba, w, h), 0, 0);
+  const blob = await canvas.convertToBlob({ type: "image/png" });
+  return new Promise<string>((resolve) => {
+    const reader = new FileReader();
+    reader.onloadend = () => resolve(reader.result as string);
+    reader.readAsDataURL(blob);
+  });
+}
+
+/** Convert a depth tensor (float values) to a grayscale data URL */
+async function depthTensorToDataUrl(tensor: any): Promise<string | undefined> {
+  try {
+    const data = tensor.data instanceof Float32Array
+      ? tensor.data
+      : new Float32Array(tensor.data);
+    const dims = tensor.dims;
+    const h = dims[dims.length - 2] || dims[0];
+    const w = dims[dims.length - 1] || dims[1];
+    if (!w || !h) return undefined;
+
+    let min = Infinity, max = -Infinity;
+    for (let i = 0; i < data.length; i++) {
+      if (data[i]! < min) min = data[i]!;
+      if (data[i]! > max) max = data[i]!;
+    }
+    const range = max - min || 1;
+
+    const rgba = new Uint8ClampedArray(w * h * 4);
+    for (let i = 0; i < w * h; i++) {
+      const v = Math.round(((data[i]! - min) / range) * 255);
+      rgba[i * 4] = rgba[i * 4 + 1] = rgba[i * 4 + 2] = v;
+      rgba[i * 4 + 3] = 255;
+    }
+
+    const canvas = new OffscreenCanvas(w, h);
+    const ctx2d = canvas.getContext("2d")!;
+    ctx2d.putImageData(new ImageData(rgba, w, h), 0, 0);
+    const blob = await canvas.convertToBlob({ type: "image/png" });
+    return new Promise<string>((resolve) => {
+      const reader = new FileReader();
+      reader.onloadend = () => resolve(reader.result as string);
+      reader.readAsDataURL(blob);
+    });
+  } catch {
+    return undefined;
+  }
+}
+
 export async function pipelineExecutor(
   node: FlowNode,
   inputs: Record<string, any>,
@@ -144,21 +225,79 @@ export async function pipelineExecutor(
         processedResult = await result.toDataURL();
       }
       // Handle array of RawImage objects (e.g. background-removal)
-      if (
+      else if (
         Array.isArray(result) &&
         result.length > 0 &&
         typeof result[0]?.toDataURL === "function"
       ) {
         processedResult = await result[0].toDataURL();
       }
+      // Handle raw pixel data (RawImage-like without toDataURL)
+      else if (
+        !Array.isArray(result) &&
+        result.data &&
+        (result.data instanceof Uint8ClampedArray || ArrayBuffer.isView(result.data)) &&
+        result.width &&
+        result.height
+      ) {
+        processedResult = await rawPixelsToDataUrl(result);
+      }
+      // Handle array of raw pixel data objects
+      else if (
+        Array.isArray(result) &&
+        result.length > 0 &&
+        result[0]?.data &&
+        (result[0].data instanceof Uint8ClampedArray || ArrayBuffer.isView(result[0].data)) &&
+        result[0]?.width
+      ) {
+        processedResult = await rawPixelsToDataUrl(result[0]);
+      }
+
       // Depth estimation: convert depth map image and main result
-      if (result.depth && typeof result.depth.toDataURL === "function") {
-        const depthDataUrl = await result.depth.toDataURL();
-        ctx.pushValue(node.id, "depth_map", depthDataUrl);
-        if (task === "depth-estimation") {
+      if (result.depth) {
+        let depthDataUrl: string | undefined;
+        if (typeof result.depth.toDataURL === "function") {
+          depthDataUrl = await result.depth.toDataURL();
+        } else if (result.depth.data && result.depth.width && result.depth.height) {
+          depthDataUrl = await rawPixelsToDataUrl(result.depth);
+        }
+        if (depthDataUrl) {
+          ctx.pushValue(node.id, "depth_map", depthDataUrl);
+          if (task === "depth-estimation") {
+            processedResult = depthDataUrl;
+          }
+        }
+      }
+      // Depth estimation fallback: predicted_depth tensor → grayscale image
+      else if (
+        task === "depth-estimation" &&
+        result.predicted_depth?.dims &&
+        result.predicted_depth?.data
+      ) {
+        const depthDataUrl = await depthTensorToDataUrl(result.predicted_depth);
+        if (depthDataUrl) {
+          ctx.pushValue(node.id, "depth_map", depthDataUrl);
           processedResult = depthDataUrl;
         }
       }
+    }
+
+    // Segmentation: convert mask RawImages to data URLs for proper display
+    if (
+      (task === "image-segmentation") &&
+      Array.isArray(processedResult)
+    ) {
+      processedResult = await Promise.all(
+        processedResult.map(async (seg: any) => {
+          if (seg?.mask && typeof seg.mask.toDataURL === "function") {
+            return { ...seg, mask: await seg.mask.toDataURL() };
+          }
+          if (seg?.mask?.data && seg.mask.width && seg.mask.height) {
+            return { ...seg, mask: await rawPixelsToDataUrl(seg.mask) };
+          }
+          return seg;
+        }),
+      );
     }
 
     // TTS: convert Float32Array audio to playable WAV Blob
