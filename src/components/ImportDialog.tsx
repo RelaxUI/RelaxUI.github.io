@@ -23,9 +23,11 @@ export function ImportDialog({ onImport, onClose }: ImportDialogProps) {
 
   useEffect(() => {
     if (tab !== "registry") return;
-    const allWorkflows = Object.values(REGISTRY_CATEGORIES).flat();
+    const localWorkflows = Object.entries(REGISTRY_CATEGORIES)
+      .filter(([cat]) => cat !== "API Workflows" && cat !== "Workflows")
+      .flatMap(([, wfs]) => wfs);
     const modelsToFetch = [
-      ...new Set(allWorkflows.map((wf) => wf.defaultModel)),
+      ...new Set(localWorkflows.map((wf) => wf.defaultModel)),
     ];
     modelsToFetch.forEach(async (modelId) => {
       if (modelSizes[modelId] !== undefined) return;

@@ -72,7 +72,7 @@ export const NODE_INFO: Record<string, NodeInfo> = {
     out: "ALL FILES, IMAGES, AUDIO, TEXT, VIDEO",
   },
   batchIterator: {
-    desc: "Takes an array and emits its items one by one (or in chunks) with a configurable delay. Great for looping through LLM calls.",
+    desc: "Takes an array and emits its items one by one (or in chunks) with a configurable delay. Supports manual step mode with Next/Rework buttons for interactive iteration.",
     in: "list (Array)",
     out: "item (Data)",
   },
@@ -87,8 +87,8 @@ export const NODE_INFO: Record<string, NodeInfo> = {
     out: "list (Array)",
   },
   downloadData: {
-    desc: "Takes any data input and provides download in multiple formats: JSON, CSV, TXT for text/tabular data; PNG, JPG, WEBP for images; ZIP for mixed arrays.",
-    in: "in (Any)",
+    desc: "Takes any data input and provides download in multiple formats: JSON, CSV, TXT for text/tabular data; PNG, JPG, WEBP for images; ZIP for mixed arrays. Connect a NAME handle for custom filenames. Supports auto, from-edge, and incremental naming modes.",
+    in: "in (Any), name (String, optional)",
     out: "None",
   },
   imageProcess: {
@@ -97,9 +97,19 @@ export const NODE_INFO: Record<string, NodeInfo> = {
     out: "Processed image (Data URL)",
   },
   reviewNode: {
-    desc: "Pauses execution for manual review and approval. Supports approve, edit, rework (re-trigger upstream), and cancel actions.",
+    desc: "Pauses execution for manual approval. Buttons only: Approve, Rework (re-trigger upstream), and Cancel.",
     in: "in (Any)",
     out: "Approved data",
+  },
+  converter: {
+    desc: "Converts data between formats: blob URLs, base64 data URIs, HTTPS URLs, plain text, and JSON. Use before API nodes that require a specific input format.",
+    in: "in (Any)",
+    out: "Converted data",
+  },
+  pollUntil: {
+    desc: "Polls a URL at a configurable interval until a JSON status field matches the done value. Ideal for queue-based APIs (fal.ai, Wavespeed, etc.). Optionally fetches a separate result URL when done.",
+    in: "url (String), headers (JSON String), resultUrl (String, optional)",
+    out: "Final JSON response",
   },
   // Transformers.js nodes
   transformersPipeline: {

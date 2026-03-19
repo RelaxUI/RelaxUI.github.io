@@ -59,6 +59,11 @@ export function TopBar({
       if (confirmAction === action) {
         if (action === "clear") clearWorkflow();
         else if (action === "reset") resetToDefault();
+        else if (action === "cache") {
+          import("@/utils/modelRegistry.ts").then(({ ModelRegistry }) =>
+            ModelRegistry.clear_cache_all(),
+          );
+        }
         setConfirmAction(null);
         setMenuOpen(false);
       } else {
@@ -67,17 +72,6 @@ export function TopBar({
     },
     [confirmAction, clearWorkflow, resetToDefault],
   );
-
-  const handleClearModelCache = useCallback(async () => {
-    const { ModelRegistry } = await import("@/utils/modelRegistry.ts");
-    const ok = await ModelRegistry.clear_cache_all();
-    alert(
-      ok
-        ? "Browser cache cleared successfully!"
-        : "Failed to clear cache. Your browser might not support this operation.",
-    );
-    setMenuOpen(false);
-  }, []);
 
   /** Navigate up one level in the macro breadcrumb hierarchy */
   const goUpOneLevel = useCallback(() => {
@@ -136,7 +130,7 @@ export function TopBar({
       {/* ── Center: Breadcrumbs ── */}
 
       {/* Desktop breadcrumbs — full path in a pill */}
-      <div className="hidden sm:flex items-center gap-2 bg-(--relax-bg-elevated) border border-(--relax-border) px-4 py-1.5 rounded-full shadow-inner whitespace-nowrap overflow-hidden flex-1 min-w-0 max-w-md mx-auto custom-scrollbar overflow-x-auto">
+      <div className="hidden sm:flex items-center gap-2 bg-(--relax-bg-elevated) border border-(--relax-border) px-4 py-1.5 rounded-full shadow-inner whitespace-nowrap overflow-hidden flex-1 min-w-0 max-w-xs sm:max-w-sm md:max-w-md lg:max-w-lg mx-auto custom-scrollbar overflow-x-auto">
         <span
           className={`cursor-pointer transition-colors flex items-center gap-1.5 shrink-0 ${!currentView ? "text-(--relax-accent) font-bold drop-shadow-[0_0_5px_rgba(0,229,255,0.5)]" : "text-(--relax-text-muted) hover:text-white"}`}
           onClick={() => setCurrentView(null)}
@@ -261,13 +255,13 @@ export function TopBar({
 
               <div className="border-t border-(--relax-border) my-1" />
 
-              <button onClick={handleClearModelCache} className={menuItemClass}>
-                CLEAR MODEL CACHE
-              </button>
-
-              <div className="border-t border-(--relax-border) my-1" />
-
               {/* Destructive — two-click confirm */}
+              <button
+                onClick={() => handleDangerAction("cache")}
+                className={dangerItemClass}
+              >
+                {confirmAction === "cache" ? "CONFIRM CLEAR CACHE?" : "CLEAR MODEL CACHE"}
+              </button>
               <button
                 onClick={() => handleDangerAction("clear")}
                 className={dangerItemClass}

@@ -1,2 +1,3 @@
+let _counter = 0;
 export const generateId = (prefix: string): string =>
-  `${prefix}-${Date.now()}-${Math.floor(Math.random() * 1000)}`;
+  `${prefix}-${Date.now()}-${_counter++}`;

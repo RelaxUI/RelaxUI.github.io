@@ -1,6 +1,7 @@
 import { ImageCompareSlider } from "@/components/ImageCompareSlider.tsx";
 import { RuntimeContext } from "@/context/RuntimeContext.ts";
 import { BaseNode } from "@/nodes/BaseNode.tsx";
+import { blobNames } from "@/utils/blobNames.ts";
 import { useCallback, useContext } from "react";
 
 /** Unwrap pipeline envelope to data URL */
@@ -11,6 +12,23 @@ function unwrap(v: any): string | undefined {
   return undefined;
 }
 
+/** Try to extract a filename from a URL/data-URI, fallback to default */
+function extractName(src: string | undefined, fallback: string): string {
+  if (!src) return fallback;
+  try {
+    // Check the blob name registry first (populated by FolderInputNode)
+    if (src.startsWith("blob:")) {
+      return blobNames.get(src) || fallback;
+    }
+    if (src.startsWith("http://") || src.startsWith("https://")) {
+      const pathname = new URL(src).pathname;
+      const name = pathname.split("/").pop();
+      if (name && name.includes(".")) return name;
+    }
+  } catch { /* ignore */ }
+  return fallback;
+}
+
 export const OutputImageNode = (props: any) => {
   const { displayData, setFullscreenImage } = useContext(RuntimeContext)!;
   const data = displayData[props.id];
@@ -18,13 +36,26 @@ export const OutputImageNode = (props: any) => {
   const img2 = unwrap(data?.in2);
   const hasImages = !!(img1 || img2);
 
-  const handleDownload = useCallback(() => {
+  const handleDownload = useCallback(async () => {
     const src = img2 || img1;
     if (!src) return;
-    const a = document.createElement("a");
-    a.href = src;
-    a.download = "image.png";
-    a.click();
+    const filename = extractName(img1, "image.png");
+    try {
+      const res = await fetch(src);
+      const blob = await res.blob();
+      const blobUrl = URL.createObjectURL(blob);
+      const a = document.createElement("a");
+      a.href = blobUrl;
+      a.download = filename;
+      a.click();
+      URL.revokeObjectURL(blobUrl);
+    } catch {
+      // Fallback for data URIs or same-origin
+      const a = document.createElement("a");
+      a.href = src;
+      a.download = filename;
+      a.click();
+    }
   }, [img1, img2]);
 
   return (

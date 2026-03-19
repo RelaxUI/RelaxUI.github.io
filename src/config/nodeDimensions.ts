@@ -20,7 +20,7 @@ export const NODE_DIMENSIONS: Record<string, NodeDimension> = {
     sub: "active ports",
   },
   folderInput: { w: 220, h: 220, title: "FOLDER INPUT", sub: "load directory" },
-  batchIterator: { w: 220, h: 160, title: "BATCH ITERATOR", sub: "loop items" },
+  batchIterator: { w: 220, h: 200, title: "BATCH ITERATOR", sub: "loop items" },
   delay: { w: 220, h: 100, title: "DELAY", sub: "pause flow" },
   listAggregator: {
     w: 280,
@@ -28,9 +28,11 @@ export const NODE_DIMENSIONS: Record<string, NodeDimension> = {
     title: "LIST AGGREGATOR",
     sub: "collect items",
   },
-  downloadData: { w: 220, h: 160, title: "DOWNLOAD DATA", sub: "multi-format" },
+  downloadData: { w: 240, h: 210, title: "DOWNLOAD DATA", sub: "multi-format" },
   imageProcess: { w: 280, h: 420, title: "IMAGE PROCESS", sub: "resize/convert" },
-  reviewNode: { w: 320, h: 400, title: "REVIEW", sub: "manual approval" },
+  reviewNode: { w: 220, h: 160, title: "REVIEW", sub: "manual approval" },
+  converter: { w: 220, h: 160, title: "CONVERTER", sub: "format convert" },
+  pollUntil: { w: 260, h: 280, title: "POLL UNTIL", sub: "queue polling" },
   // Transformers.js nodes
   transformersPipeline: {
     w: 300,

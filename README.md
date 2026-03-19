@@ -30,7 +30,7 @@ src/
 │   ├── pipelineRegistry.ts         22 pipeline task definitions
 │   ├── modelClassRegistry.ts       19 model class definitions
 │   ├── generationDefaults.ts       Generation parameter schema
-│   └── workflowRegistry.ts         50 ready-made workflow definitions
+│   └── workflowRegistry.ts         54 ready-made workflow definitions
 ├── engine/
 │   ├── GraphRunner.ts              Topological graph execution with streaming
 │   ├── nodeExecutors.ts            Per-type executor dispatch
@@ -64,17 +64,21 @@ src/
 ├── nodes/
 │   ├── BaseNode.tsx                Shared node chrome (header, resize, timing)
 │   ├── registry.ts                 Node type and edge type registries
-│   ├── core/                       18 core node types
+│   ├── core/                       20 core node types
 │   └── transformers/               13 Transformers.js node types
 ├── macros/
 │   ├── macroFactory.ts             Unified PREBUILT_MACROS export
 │   ├── pipelineMacroFactory.ts     Auto-generates 22 pipeline macros
 │   ├── modelClassMacroFactory.ts   Auto-generates 19 model class macros
-│   └── openRouter.ts              OpenRouter API macro
+│   ├── openRouter.ts              OpenRouter API macro
+│   ├── falai.ts                   fal.ai API macro
+│   ├── replicate.ts               Replicate API macro
+│   └── wavespeed.ts               Wavespeed API macro
 └── utils/
     ├── generateId.ts               Unique ID generator (base32)
     ├── modelRegistry.ts            HuggingFace model size estimator + cache
-    └── nodeMenuItems.ts            Categorized node menu builder
+    ├── nodeMenuItems.ts            Categorized node menu builder
+    └── blobNames.ts                Blob URL name utilities
 ```
 
 ## Key Concepts
@@ -108,7 +112,7 @@ All settings persist to `localStorage` and are accessed via the `useSettings` ho
 
 ## Node Types
 
-### Core (18)
+### Core (20)
 
 | Node              | Description                                                   |
 | ----------------- | ------------------------------------------------------------- |
@@ -129,6 +133,8 @@ All settings persist to `localStorage` and are accessed via the `useSettings` ho
 | Delay             | Pause execution for N milliseconds                            |
 | List Aggregator   | Collect streamed items into a single array                    |
 | Review Node       | Manual approval gate with preview and inline edit             |
+| Converter         | Format conversion between data types                          |
+| Poll Until        | Poll a URL until a condition is met (queue-based APIs)        |
 
 ### Transformers.js (13)
 
@@ -166,12 +172,13 @@ The Universal Output node auto-detects data shape and renders the appropriate vi
 
 ## Workflow Registry
 
-**IMPORT > REGISTRY** provides 50 ready-made workflows organized by category:
+**IMPORT > REGISTRY** provides 54 ready-made workflows organized by category:
 
-- **Pipeline workflows (24)** — One per task, pre-configured with default model and sample data
+- **Pipeline workflows (25)** — One per task, pre-configured with default model and sample data
 - **Batch processing (3)** — Folder input with progress tracking (image captioning, text classification, background removal)
 - **Model class workflows (20)** — Multi-node workflows using individual Transformers.js nodes (generate-mode or call-mode)
-- **Additional workflows (3)** — OpenRouter LLM, feature extraction similarity, Jina CLIP v2
+- **Additional workflows (3)** — BRIA RMBG-2.0 background removal, Kokoro TTS, Jina CLIP v2
+- **API workflows (3)** — fal.ai synthetic dataset, Replicate I2V prompt variations, Wavespeed video head swap
 
 Model sizes are shown with color-coded badges (green < 100 MB, yellow < 500 MB, red > 500 MB).
 
@@ -218,6 +225,7 @@ Colors are CSS custom properties in `src/index.css`:
   --relax-text-default: #a0aec0;
   --relax-text-bright: #ffffff;
   --relax-accent: #00e5ff;
+  --relax-accent-dark: #011a1f;
   --relax-success: #00ffaa;
   --relax-error: #ef4444;
 }

@@ -13,5 +13,6 @@
   --relax-accent-dim: rgba(0, 229, 255, 0.15);
   --relax-success: #00ffaa;
   --relax-error: #ef4444;
+  --relax-accent-dark: #011a1f;
   --relax-accent-gradient: linear-gradient(to top right, #00e5ff, #007acc);
 }

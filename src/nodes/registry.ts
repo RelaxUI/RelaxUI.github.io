@@ -3,6 +3,7 @@ import type { FlowNode, NodeHandles } from "@/types.ts";
 
 // Core nodes
 import { BatchIteratorNode } from "@/nodes/core/BatchIteratorNode.tsx";
+import { ConverterNode } from "@/nodes/core/ConverterNode.tsx";
 import { CustomScriptNode } from "@/nodes/core/CustomScriptNode.tsx";
 import { DelayNode } from "@/nodes/core/DelayNode.tsx";
 import { DownloadDataNode } from "@/nodes/core/DownloadDataNode.tsx";
@@ -11,6 +12,7 @@ import { ReviewNode } from "@/nodes/core/ReviewNode.tsx";
 import { FolderInputNode } from "@/nodes/core/FolderInputNode.tsx";
 import { HttpRequestNode } from "@/nodes/core/HttpRequestNode.tsx";
 import { MediaInputNode } from "@/nodes/core/MediaInputNode.tsx";
+import { PollUntilNode } from "@/nodes/core/PollUntilNode.tsx";
 import { InputTextNode } from "@/nodes/core/InputTextNode.tsx";
 import { JsonPathNode } from "@/nodes/core/JsonPathNode.tsx";
 import { ListAggregatorNode } from "@/nodes/core/ListAggregatorNode.tsx";
@@ -60,6 +62,8 @@ export const nodeTypes: Record<string, any> = {
   downloadData: DownloadDataNode,
   imageProcess: ImageProcessNode,
   reviewNode: ReviewNode,
+  converter: ConverterNode,
+  pollUntil: PollUntilNode,
   // Transformers.js
   transformersPipeline: PipelineNode,
   transformersModelLoader: ModelLoaderNode,
@@ -170,12 +174,21 @@ export const getNodeHandles = (
     handles.sources.push({ id: "list", label: "LIST", offsetY: 70 });
   } else if (node.type === "downloadData") {
     handles.targets.push({ id: "in", label: "DATA", offsetY: 70 });
+    handles.targets.push({ id: "name", label: "NAME", offsetY: 90 });
   } else if (node.type === "imageProcess") {
     handles.targets.push({ id: "image", label: "IMAGE", offsetY: 70 });
     handles.sources.push({ id: "out", label: "OUT", offsetY: 70 });
   } else if (node.type === "reviewNode") {
     handles.targets.push({ id: "in", label: "IN", offsetY: 70 });
     handles.sources.push({ id: "out", label: "OUT", offsetY: 70 });
+  } else if (node.type === "converter") {
+    handles.targets.push({ id: "in", label: "IN", offsetY: 70 });
+    handles.sources.push({ id: "out", label: "OUT", offsetY: 70 });
+  } else if (node.type === "pollUntil") {
+    handles.targets.push({ id: "url", label: "URL", offsetY: 60 });
+    handles.targets.push({ id: "headers", label: "HEADERS", offsetY: 90 });
+    handles.targets.push({ id: "resultUrl", label: "RESULT URL", offsetY: 120 });
+    handles.sources.push({ id: "out", label: "OUT", offsetY: 90 });
   }
   // --- Transformers.js nodes ---
   else if (node.type === "transformersPipeline") {

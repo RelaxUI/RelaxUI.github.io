@@ -1,6 +1,6 @@
 import { RuntimeContext } from "@/context/RuntimeContext.ts";
 import { BaseNode } from "@/nodes/BaseNode.tsx";
-import { useContext, useMemo, useState } from "react";
+import { useContext, useMemo, useRef, useState } from "react";
 
 function arrayToCsv(data: any[]): string {
   if (data.length === 0) return "";
@@ -113,31 +113,48 @@ async function convertImage(src: string | Blob, targetFormat: string): Promise<B
   }
 }
 
+const NAMING_MODES = ["auto", "from-edge", "incremental"] as const;
+type NamingMode = (typeof NAMING_MODES)[number];
+
 export const DownloadDataNode = (props: any) => {
   const { displayData, updateNodeData } = useContext(RuntimeContext)!;
-  const data = displayData[props.id];
+  const raw = displayData[props.id];
+  // Support new format { data, name } and old format (raw data directly)
+  const data = raw?.data ?? raw;
+  const edgeName = raw?.name;
   const format = props.data.format || "json";
+  const namingMode: NamingMode = props.data.namingMode || "auto";
   const [downloading, setDownloading] = useState(false);
+  const incrementalCounter = useRef(0);
 
   const isArray = Array.isArray(data);
   const dataType = useMemo(() => detectDataType(data), [data]);
   const formats = useMemo(() => getFormats(dataType, isArray), [dataType, isArray]);
   const currentFormat = formats.includes(format) ? format : formats[0]!;
 
+  const getFilename = (ext: string) => {
+    if (namingMode === "from-edge" && edgeName) {
+      return `${edgeName}.${ext}`;
+    }
+    if (namingMode === "incremental") {
+      incrementalCounter.current += 1;
+      return `image-${incrementalCounter.current}.${ext}`;
+    }
+    return `relaxui-output-${Date.now()}.${ext}`;
+  };
+
   const handleDownload = async () => {
     if (!data) return;
     setDownloading(true);
 
     try {
-      const ts = Date.now();
-
       if (currentFormat === "csv" && dataType === "tabular") {
         const csv = arrayToCsv(data);
-        download(new Blob([csv], { type: "text/csv" }), `relaxui-output-${ts}.csv`);
+        download(new Blob([csv], { type: "text/csv" }), getFilename("csv"));
 
       } else if (currentFormat === "txt") {
         const text = typeof data === "string" ? data : JSON.stringify(data, null, 2);
-        download(new Blob([text], { type: "text/plain" }), `relaxui-output-${ts}.txt`);
+        download(new Blob([text], { type: "text/plain" }), getFilename("txt"));
 
       } else if (currentFormat === "zip" && isArray) {
         const JSZip = (await import("jszip")).default;
@@ -156,23 +173,23 @@ export const DownloadDataNode = (props: any) => {
           }
         }
         const zipBlob = await zip.generateAsync({ type: "blob" });
-        download(zipBlob, `relaxui-output-${ts}.zip`);
+        download(zipBlob, getFilename("zip"));
 
       } else if (dataType === "media" && !isArray && ["original", "png", "jpg", "webp"].includes(currentFormat)) {
         const resolved = data instanceof Blob ? { blob: data, mime: data.type } : await resolveUrl(data);
         const { blob, mime } = resolved;
         if (currentFormat === "original") {
-          download(blob, `relaxui-output-${ts}.${extFromMime(mime)}`);
+          download(blob, getFilename(extFromMime(mime)));
         } else if (mime.startsWith("image")) {
           const converted = await convertImage(blob, currentFormat);
-          download(converted, `relaxui-output-${ts}.${currentFormat}`);
+          download(converted, getFilename(currentFormat));
         } else {
-          download(blob, `relaxui-output-${ts}.${extFromMime(mime)}`);
+          download(blob, getFilename(extFromMime(mime)));
         }
 
       } else {
         const blob = new Blob([JSON.stringify(data, null, 2)], { type: "application/json" });
-        download(blob, `relaxui-output-${ts}.json`);
+        download(blob, getFilename("json"));
       }
     } finally {
       setDownloading(false);
@@ -182,6 +199,25 @@ export const DownloadDataNode = (props: any) => {
   return (
     <BaseNode {...props}>
       <div className="flex flex-col gap-2 w-full h-full items-center justify-center nowheel nodrag">
+        {/* Naming mode selector */}
+        <div className="flex bg-(--relax-bg-primary)/60 rounded p-0.5 border border-(--relax-border) w-full">
+          {NAMING_MODES.map((m) => (
+            <button
+              key={m}
+              onClick={() => updateNodeData(props.id, "namingMode", m)}
+              className={`flex-1 text-[9px] font-bold rounded py-0.5 ${namingMode === m ? "bg-(--relax-accent) text-(--relax-bg-primary)" : "text-(--relax-text-muted) hover:text-white"}`}
+            >
+              {m.toUpperCase()}
+            </button>
+          ))}
+        </div>
+
+        {edgeName && namingMode === "from-edge" && (
+          <div className="text-[9px] text-(--relax-text-muted) font-mono truncate w-full text-center">
+            name: {String(edgeName)}
+          </div>
+        )}
+
         {formats.length > 1 && (
           <div className="flex bg-(--relax-bg-primary)/60 rounded p-0.5 border border-(--relax-border) w-full">
             {formats.map((f) => (

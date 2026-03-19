@@ -1,5 +1,6 @@
 import { RuntimeContext } from "@/context/RuntimeContext.ts";
 import { BaseNode } from "@/nodes/BaseNode.tsx";
+import { blobNames } from "@/utils/blobNames.ts";
 import { useContext } from "react";
 
 interface FileMeta {
@@ -39,6 +40,7 @@ export const FolderInputNode = (props: any) => {
     for (const file of files) {
       if (file.name.startsWith(".")) continue;
       const url = URL.createObjectURL(file);
+      blobNames.set(url, file.name);
       const ext = "." + (file.name.split(".").pop()?.toLowerCase() || "");
       fileList.push(url);
       fileMeta.push({

@@ -36,9 +36,11 @@ export function getNodeMenuItems(currentView: string | null): MenuItem[] {
 
   // ── Processing ──
   items.push({ type: "imageProcess", label: "Image Process", category: "Processing" });
+  items.push({ type: "converter", label: "Converter", category: "Processing" });
   items.push({ type: "customScript", label: "Custom Script", category: "Processing" });
   items.push({ type: "httpRequest", label: "HTTP Request", category: "Processing" });
   items.push({ type: "jsonPath", label: "JSON Path", category: "Processing" });
+  items.push({ type: "pollUntil", label: "Poll Until", category: "Processing" });
   items.push({ type: "macroNode", label: "Macro (Sub-Graph)", category: "Processing" });
 
   // ── Flow Control — ordered by typical workflow sequence ──

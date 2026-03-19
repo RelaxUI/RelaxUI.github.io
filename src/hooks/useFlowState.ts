@@ -150,6 +150,15 @@ export function useFlowState() {
     return () => clearTimeout(timer);
   }, [nodes, edges, reactFlowInstance]);
 
+  // Fit view when entering/exiting macro views
+  useEffect(() => {
+    // Small delay to let React Flow update visible nodes before fitting
+    const timer = setTimeout(() => {
+      reactFlowInstance.fitView({ padding: 0.15, duration: 200 });
+    }, 50);
+    return () => clearTimeout(timer);
+  }, [currentView, reactFlowInstance]);
+
   // Breadcrumbs
   const breadcrumbs: FlowNode[] = [];
   let currId = currentView;

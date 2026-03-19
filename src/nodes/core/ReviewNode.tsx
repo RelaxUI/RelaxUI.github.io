@@ -1,112 +1,6 @@
 import { RuntimeContext } from "@/context/RuntimeContext.ts";
 import { BaseNode } from "@/nodes/BaseNode.tsx";
-import { useContext, useEffect, useState } from "react";
-
-/** Renders a blob: URL by fetching its Content-Type to pick the right element. */
-function BlobPreview({ src }: { src: string }) {
-  const [type, setType] = useState<"image" | "audio" | "video" | "text" | null>(
-    null,
-  );
-  const [text, setText] = useState("");
-
-  useEffect(() => {
-    let cancelled = false;
-    fetch(src)
-      .then(async (res) => {
-        if (cancelled) return;
-        const ct = res.headers.get("content-type") || "";
-        if (ct.startsWith("image")) setType("image");
-        else if (ct.startsWith("audio")) setType("audio");
-        else if (ct.startsWith("video")) setType("video");
-        else if (ct.startsWith("text") || ct.includes("json")) {
-          setText(await res.text());
-          setType("text");
-        } else setType("image"); // best-effort default
-      })
-      .catch(() => setType("image"));
-    return () => {
-      cancelled = true;
-    };
-  }, [src]);
-
-  if (!type)
-    return <span className="opacity-50 italic text-[10px]">Loading...</span>;
-  if (type === "image")
-    return (
-      <img
-        src={src}
-        alt="Preview"
-        className="max-w-full max-h-full rounded object-contain"
-      />
-    );
-  if (type === "audio") return <audio controls src={src} className="w-full" />;
-  if (type === "video")
-    return (
-      <video
-        controls
-        src={src}
-        className="max-w-full max-h-full rounded object-contain"
-      />
-    );
-  return <span className="whitespace-pre-wrap break-all">{text}</span>;
-}
-
-function renderPreview(data: any): React.ReactNode {
-  if (data == null) return <span className="opacity-30">No data</span>;
-
-  // Arrays — render each item
-  if (Array.isArray(data)) {
-    return (
-      <div className="flex flex-col gap-2">
-        {data.map((item, i) => (
-          <div key={i}>{renderPreview(item)}</div>
-        ))}
-      </div>
-    );
-  }
-
-  if (typeof data === "string") {
-    if (data.startsWith("data:image")) {
-      return (
-        <img
-          src={data}
-          alt="Preview"
-          className="max-w-full max-h-full rounded object-contain"
-        />
-      );
-    }
-    if (data.startsWith("data:audio")) {
-      return <audio controls src={data} className="w-full" />;
-    }
-    if (data.startsWith("data:video")) {
-      return (
-        <video
-          controls
-          src={data}
-          className="max-w-full max-h-full rounded object-contain"
-        />
-      );
-    }
-    if (data.startsWith("blob:")) {
-      return <BlobPreview src={data} />;
-    }
-    return <span className="whitespace-pre-wrap break-all">{data}</span>;
-  }
-
-  if (typeof data === "object") {
-    try {
-      return (
-        <span className="whitespace-pre-wrap break-all">
-          {JSON.stringify(data, null, 2)}
-        </span>
-      );
-    } catch {
-      return <span className="opacity-50 italic">Unserializable object</span>;
-    }
-  }
-
-  return <span className="whitespace-pre-wrap break-all">{String(data)}</span>;
-}
+import { useContext } from "react";
 
 const statusBadges: Record<string, { label: string; color: string }> = {
   pending: {
@@ -134,46 +28,37 @@ export const ReviewNode = (props: any) => {
     | { data: any; status: string }
     | undefined;
 
-  const [editing, setEditing] = useState(false);
-  const [editValue, setEditValue] = useState("");
-
   const data = reviewData?.data;
   const status = reviewData?.status ?? null;
   const isPending = status === "pending";
-
-  const handleEdit = () => {
-    setEditValue(
-      typeof data === "string" ? data : JSON.stringify(data, null, 2),
-    );
-    setEditing(true);
-  };
-
-  const handleSaveEdit = () => {
-    setEditing(false);
-    resolveApproval(props.id, { action: "edit", value: editValue });
-  };
-
   const badge = status ? statusBadges[status] : null;
 
   return (
     <BaseNode {...props}>
-      {/* Preview area */}
-      <div className="nowheel nodrag flex-1 w-full bg-(--relax-bg-primary)/60 border border-(--relax-border) rounded p-2 text-xs font-mono text-white overflow-y-auto custom-scrollbar min-h-0">
-        {reviewData == null ? (
-          <span className="opacity-30">Waiting for data...</span>
-        ) : editing ? (
-          <textarea
-            className="nowheel nodrag w-full h-full min-h-20 bg-transparent text-xs font-mono text-white focus:outline-none resize-none"
-            value={editValue}
-            onChange={(e) => setEditValue(e.target.value)}
-            autoFocus
-          />
-        ) : (
-          renderPreview(data)
-        )}
-      </div>
+      {/* Idle state — no data yet */}
+      {!status && (
+        <div className="flex flex-col items-center justify-center gap-1.5 h-full">
+          <svg
+            width="28"
+            height="28"
+            viewBox="0 0 24 24"
+            fill="none"
+            stroke="currentColor"
+            strokeWidth="1.5"
+            strokeLinecap="round"
+            strokeLinejoin="round"
+            className="text-(--relax-accent) opacity-30"
+          >
+            <path d="M12 22s8-4 8-10V5l-8-3-8 3v7c0 6 8 10 8 10z" />
+            <path d="m9 12 2 2 4-4" />
+          </svg>
+          <span className="text-[9px] text-(--relax-text-muted) opacity-50 font-bold tracking-wider uppercase">
+            Awaiting data
+          </span>
+        </div>
+      )}
 
-      {/* Status badge (when not pending) */}
+      {/* Status badge */}
       {badge && !isPending && (
         <div className="flex justify-center mt-1.5">
           <span
@@ -185,54 +70,39 @@ export const ReviewNode = (props: any) => {
       )}
 
       {/* Action buttons (when pending) */}
-      {isPending && !editing && (
-        <div className="flex gap-1.5 mt-1.5">
-          <button
-            onClick={() =>
-              resolveApproval(props.id, { action: "approve", value: data })
-            }
-            className="flex-1 text-[9px] font-bold tracking-wider uppercase bg-green-500/15 text-green-400 border border-green-500/30 rounded px-1.5 py-1 hover:bg-green-500/30 transition-colors"
-          >
-            Approve
-          </button>
-          <button
-            onClick={handleEdit}
-            className="flex-1 text-[9px] font-bold tracking-wider uppercase bg-cyan-500/15 text-cyan-400 border border-cyan-500/30 rounded px-1.5 py-1 hover:bg-cyan-500/30 transition-colors"
-          >
-            Edit
-          </button>
-          <button
-            onClick={() =>
-              resolveApproval(props.id, { action: "rework", value: data })
-            }
-            className="flex-1 text-[9px] font-bold tracking-wider uppercase bg-yellow-500/15 text-yellow-400 border border-yellow-500/30 rounded px-1.5 py-1 hover:bg-yellow-500/30 transition-colors"
-          >
-            Rework
-          </button>
-          <button
-            onClick={() => rejectApproval(props.id)}
-            className="flex-1 text-[9px] font-bold tracking-wider uppercase bg-red-500/15 text-red-400 border border-red-500/30 rounded px-1.5 py-1 hover:bg-red-500/30 transition-colors"
-          >
-            Cancel
-          </button>
-        </div>
-      )}
-
-      {/* Save / Cancel for edit mode */}
-      {isPending && editing && (
-        <div className="flex gap-1.5 mt-1.5">
-          <button
-            onClick={handleSaveEdit}
-            className="flex-1 text-[9px] font-bold tracking-wider uppercase bg-green-500/15 text-green-400 border border-green-500/30 rounded px-1.5 py-1 hover:bg-green-500/30 transition-colors"
-          >
-            Save
-          </button>
-          <button
-            onClick={() => setEditing(false)}
-            className="flex-1 text-[9px] font-bold tracking-wider uppercase bg-(--relax-border)/50 text-(--relax-text-muted) border border-(--relax-border) rounded px-1.5 py-1 hover:text-white transition-colors"
-          >
-            Back
-          </button>
+      {isPending && (
+        <div className="flex flex-col gap-1.5 mt-1">
+          <div className="flex justify-center">
+            <span
+              className={`text-[9px] font-bold tracking-wider uppercase border rounded px-2 py-0.5 ${statusBadges.pending.color}`}
+            >
+              {statusBadges.pending.label}
+            </span>
+          </div>
+          <div className="flex gap-1.5">
+            <button
+              onClick={() =>
+                resolveApproval(props.id, { action: "approve", value: data })
+              }
+              className="flex-1 text-[9px] font-bold tracking-wider uppercase bg-green-500/15 text-green-400 border border-green-500/30 rounded px-1.5 py-1 hover:bg-green-500/30 transition-colors"
+            >
+              Approve
+            </button>
+            <button
+              onClick={() =>
+                resolveApproval(props.id, { action: "rework", value: data })
+              }
+              className="flex-1 text-[9px] font-bold tracking-wider uppercase bg-yellow-500/15 text-yellow-400 border border-yellow-500/30 rounded px-1.5 py-1 hover:bg-yellow-500/30 transition-colors"
+            >
+              Rework
+            </button>
+            <button
+              onClick={() => rejectApproval(props.id)}
+              className="flex-1 text-[9px] font-bold tracking-wider uppercase bg-red-500/15 text-red-400 border border-red-500/30 rounded px-1.5 py-1 hover:bg-red-500/30 transition-colors"
+            >
+              Cancel
+            </button>
+          </div>
         </div>
       )}
     </BaseNode>

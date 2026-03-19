@@ -1,6 +1,7 @@
 import { getDefaultDevice } from "@/config/defaults.ts";
 import { MODEL_CLASSES } from "@/config/modelClassRegistry.ts";
 import { PIPELINE_TASKS } from "@/config/pipelineRegistry.ts";
+import { PREBUILT_MACROS } from "@/macros/macroFactory.ts";
 import type { FlowNode } from "@/types.ts";
 import { generateId } from "@/utils/generateId.ts";
 import type { Edge } from "@xyflow/react";
@@ -1146,7 +1147,7 @@ function createClassWorkflow(cfg: ClassWorkflowCfg): {
     nodes.push({
       id: tokenizerId,
       type: "transformersTokenizerLoader",
-      position: { x: 80, y: 280 },
+      position: { x: 80, y: 400 },
       macroId: null,
       data: { label: "Tokenizer", model_id: cfg.modelId },
     });
@@ -1157,7 +1158,7 @@ function createClassWorkflow(cfg: ClassWorkflowCfg): {
     nodes.push({
       id: processorId,
       type: "transformersProcessorLoader",
-      position: { x: 80, y: cfg.useTokenizer ? 460 : 280 },
+      position: { x: 80, y: cfg.useTokenizer ? 690 : 400 },
       macroId: null,
       data: { label: "Processor", model_id: cfg.modelId },
     });
@@ -1168,7 +1169,7 @@ function createClassWorkflow(cfg: ClassWorkflowCfg): {
   nodes.push({
     id: inputId,
     type: cfg.input.type,
-    position: { x: 380, y: cfg.useProcessor ? 440 : 280 },
+    position: { x: 380, y: cfg.useProcessor ? (cfg.useTokenizer ? 700 : 500) : 400 },
     macroId: null,
     data: { value: cfg.input.value, label: cfg.input.label },
   });
@@ -1186,7 +1187,7 @@ function createClassWorkflow(cfg: ClassWorkflowCfg): {
     nodes.push({
       id: procNodeId,
       type: "transformersProcessor",
-      position: { x: 600, y: 350 },
+      position: { x: 600, y: cfg.useTokenizer ? 600 : 400 },
       macroId: null,
       data: { label: "Process" },
     });
@@ -1210,7 +1211,7 @@ function createClassWorkflow(cfg: ClassWorkflowCfg): {
       nodes.push({
         id: secId,
         type: cfg.secondaryInput.type,
-        position: { x: 380, y: 600 },
+        position: { x: 380, y: 900 },
         macroId: null,
         data: { value: cfg.secondaryInput.value, label: cfg.secondaryInput.label },
       });
@@ -1228,7 +1229,7 @@ function createClassWorkflow(cfg: ClassWorkflowCfg): {
     nodes.push({
       id: encodeId,
       type: "transformersTokenizerEncode",
-      position: { x: 600, y: 280 },
+      position: { x: 600, y: 400 },
       macroId: null,
       data: { label: "Encode" },
     });
@@ -1328,7 +1329,7 @@ function createClassWorkflow(cfg: ClassWorkflowCfg): {
       nodes.push({
         id: textOutId,
         type: "outputText",
-        position: { x: 1350, y: 250 },
+        position: { x: 1350, y: 380 },
         macroId: null,
         data: { label: "Decoded Text" },
       });
@@ -2055,13 +2056,55 @@ WORKFLOW_REGISTRY.push(
         targetHandle: "image",
       });
 
+      const promptId = generateId("n");
+      nodes.push({
+        id: promptId,
+        type: "inputText",
+        position: { x: 650, y: 670 },
+        macroId: null,
+        data: { value: "Describe this image in detail.", label: "Caption Prompt" },
+      });
+
+      const macroResult = PREBUILT_MACROS.openRouter!.create(
+        { x: 1000, y: 200 },
+        null,
+      );
+      const macroNode = macroResult.nodes[0]!;
+      nodes.push(...macroResult.nodes);
+      edges.push(...macroResult.edges);
+
+      // imageProcess → OpenRouter image
+      edges.push({
+        id: generateId("e"),
+        source: processId,
+        sourceHandle: "out",
+        target: macroNode.id,
+        targetHandle: "image",
+      });
+      // prompt → OpenRouter text
+      edges.push({
+        id: generateId("e"),
+        source: promptId,
+        sourceHandle: "out",
+        target: macroNode.id,
+        targetHandle: "text",
+      });
+
       const reviewId = generateId("n");
       nodes.push({
         id: reviewId,
         type: "reviewNode",
-        position: { x: 1300, y: 200 },
+        position: { x: 1350, y: 200 },
         macroId: null,
         data: { label: "Review Captions" },
+      });
+      // OpenRouter text → reviewNode
+      edges.push({
+        id: generateId("e"),
+        source: macroNode.id,
+        sourceHandle: "text",
+        target: reviewId,
+        targetHandle: "in",
       });
 
       const aggId = generateId("n");
@@ -2086,7 +2129,7 @@ WORKFLOW_REGISTRY.push(
         type: "downloadData",
         position: { x: 1950, y: 200 },
         macroId: null,
-        data: { label: "Download ZIP", format: "zip" },
+        data: { label: "Download Captions", format: "json" },
       });
       edges.push({
         id: generateId("e"),
@@ -2095,6 +2138,171 @@ WORKFLOW_REGISTRY.push(
         target: downloadId,
         targetHandle: "in",
       });
+
+      return { nodes, edges };
+    },
+  },
+);
+
+/* ─── API Workflows ──────────────────────────────────────────────────────── */
+
+WORKFLOW_REGISTRY.push(
+  {
+    id: "falai-synthetic-dataset",
+    name: "fal.ai — Synthetic Image Dataset",
+    description: "Iterate images through fal.ai image editing with before/after comparison. Use Batch Iterator Next/Rework to review, download via Output Image node.",
+    category: "API Workflows",
+    tags: ["fal.ai", "image", "editing", "batch", "review", "dataset"],
+    defaultModel: "fal-ai/qwen-image-2/edit",
+    create: () => {
+      const nodes: FlowNode[] = [];
+      const edges: Edge[] = [];
+
+      // FolderInput
+      const folderId = generateId("n");
+      nodes.push({ id: folderId, type: "folderInput", position: { x: 0, y: 200 }, data: {} });
+
+      // InputText (prompt)
+      const promptId = generateId("n");
+      nodes.push({ id: promptId, type: "inputText", position: { x: 0, y: 500 }, data: { value: "make it look like a painting", label: "Prompt" } });
+
+      // Iterator (manualStep for review)
+      const iterId = generateId("n");
+      nodes.push({ id: iterId, type: "batchIterator", position: { x: 300, y: 200 }, data: { batchSize: 1, delayMs: 0, manualStep: true } });
+
+      // fal.ai Macro
+      const macroResult = PREBUILT_MACROS.falai!.create({ x: 600, y: 250 }, null);
+      const macroNode = macroResult.nodes[0]!;
+      nodes.push(...macroResult.nodes);
+      edges.push(...macroResult.edges);
+
+      // OutputImage (before/after comparison — download generated image here)
+      const outImgId = generateId("n");
+      nodes.push({ id: outImgId, type: "outputImage", position: { x: 950, y: 0 }, data: {} });
+
+      // Edges
+      // FolderInput images → Iterator
+      edges.push({ id: generateId("e"), source: folderId, sourceHandle: "images", target: iterId, targetHandle: "list" });
+      // Iterator item → fal.ai macro (image_url)
+      edges.push({ id: generateId("e"), source: iterId, sourceHandle: "item", target: macroNode.id, targetHandle: "image_url" });
+      // Prompt → fal.ai macro (prompt)
+      edges.push({ id: generateId("e"), source: promptId, sourceHandle: "out", target: macroNode.id, targetHandle: "prompt" });
+      // Iterator item → OutputImage in1 (original)
+      edges.push({ id: generateId("e"), source: iterId, sourceHandle: "item", target: outImgId, targetHandle: "in1" });
+      // fal.ai image → OutputImage in2 (generated)
+      edges.push({ id: generateId("e"), source: macroNode.id, sourceHandle: "image", target: outImgId, targetHandle: "in2" });
+
+      return { nodes, edges };
+    },
+  },
+  {
+    id: "replicate-i2v-variations",
+    name: "Replicate — I2V Prompt Variations",
+    description: "Generate multiple video variations from a single image using different prompts. Rate-limited iteration with aggregated ZIP download.",
+    category: "API Workflows",
+    tags: ["replicate", "video", "i2v", "batch", "prompt-variations"],
+    defaultModel: "wan-video/wan-2.2-i2v-fast",
+    create: () => {
+      const nodes: FlowNode[] = [];
+      const edges: Edge[] = [];
+
+      // InputImage (source photo)
+      const imgId = generateId("n");
+      nodes.push({ id: imgId, type: "inputImage", position: { x: 0, y: 100 }, data: { value: "", label: "Source Image" } });
+
+      // InputText (JSON prompt array)
+      const promptsId = generateId("n");
+      nodes.push({ id: promptsId, type: "inputText", position: { x: 0, y: 350 }, data: { value: '["a cinematic dolly zoom", "slow motion water splash", "timelapse of clouds"]', label: "Prompt Array (JSON)" } });
+
+      // Iterator
+      const iterId = generateId("n");
+      nodes.push({ id: iterId, type: "batchIterator", position: { x: 300, y: 350 }, data: { batchSize: 1, delayMs: 0 } });
+
+      // Delay (5s rate limit)
+      const delayId = generateId("n");
+      nodes.push({ id: delayId, type: "delay", position: { x: 550, y: 350 }, data: { delayMs: 5000 } });
+
+      // Replicate Macro
+      const macroResult = PREBUILT_MACROS.replicate!.create({ x: 800, y: 200 }, null);
+      const macroNode = macroResult.nodes[0]!;
+      nodes.push(...macroResult.nodes);
+      edges.push(...macroResult.edges);
+
+      // UniversalOutput (preview each)
+      const uniOutId = generateId("n");
+      nodes.push({ id: uniOutId, type: "universalOutput", position: { x: 1150, y: 0 }, data: {} });
+
+      // ListAggregator
+      const aggId = generateId("n");
+      nodes.push({ id: aggId, type: "listAggregator", position: { x: 1150, y: 360 }, data: {} });
+
+      // DownloadNode (zip all)
+      const downloadId = generateId("n");
+      nodes.push({ id: downloadId, type: "downloadData", position: { x: 1450, y: 360 }, data: { format: "zip" } });
+
+      // Edges
+      // Prompts → Iterator
+      edges.push({ id: generateId("e"), source: promptsId, sourceHandle: "out", target: iterId, targetHandle: "list" });
+      // Iterator → Delay
+      edges.push({ id: generateId("e"), source: iterId, sourceHandle: "item", target: delayId, targetHandle: "in" });
+      // Delay → Replicate macro (prompt)
+      edges.push({ id: generateId("e"), source: delayId, sourceHandle: "out", target: macroNode.id, targetHandle: "prompt" });
+      // Image → Replicate macro (image)
+      edges.push({ id: generateId("e"), source: imgId, sourceHandle: "out", target: macroNode.id, targetHandle: "image" });
+      // Replicate video → UniversalOutput
+      edges.push({ id: generateId("e"), source: macroNode.id, sourceHandle: "video", target: uniOutId, targetHandle: "data" });
+      // Replicate video → ListAggregator
+      edges.push({ id: generateId("e"), source: macroNode.id, sourceHandle: "video", target: aggId, targetHandle: "item" });
+      // ListAggregator → DownloadNode
+      edges.push({ id: generateId("e"), source: aggId, sourceHandle: "list", target: downloadId, targetHandle: "in" });
+
+      return { nodes, edges };
+    },
+  },
+  {
+    id: "wavespeed-head-swap",
+    name: "Wavespeed — Video Head Swap",
+    description: "Simple two-input workflow: swap a face onto a video with before/after comparison and direct download.",
+    category: "API Workflows",
+    tags: ["wavespeed", "video", "face-swap", "head-swap"],
+    defaultModel: "wavespeed-ai/video-head-swap",
+    create: () => {
+      const nodes: FlowNode[] = [];
+      const edges: Edge[] = [];
+
+      // VideoInput (source video)
+      const videoId = generateId("n");
+      nodes.push({ id: videoId, type: "videoInput", position: { x: 0, y: 100 }, data: { value: "", label: "Source Video" } });
+
+      // MediaInput (face image)
+      const faceId = generateId("n");
+      nodes.push({ id: faceId, type: "inputImage", position: { x: 0, y: 400 }, data: { value: "", label: "Face Image" } });
+
+      // Wavespeed Macro
+      const macroResult = PREBUILT_MACROS.wavespeed!.create({ x: 350, y: 200 }, null);
+      const macroNode = macroResult.nodes[0]!;
+      nodes.push(...macroResult.nodes);
+      edges.push(...macroResult.edges);
+
+      // OutputImage (before/after comparison)
+      const outImgId = generateId("n");
+      nodes.push({ id: outImgId, type: "outputImage", position: { x: 700, y: 0 }, data: {} });
+
+      // DownloadNode
+      const downloadId = generateId("n");
+      nodes.push({ id: downloadId, type: "downloadData", position: { x: 700, y: 400 }, data: {} });
+
+      // Edges
+      // VideoInput → Wavespeed macro (video)
+      edges.push({ id: generateId("e"), source: videoId, sourceHandle: "video", target: macroNode.id, targetHandle: "video" });
+      // FaceImage → Wavespeed macro (face_image)
+      edges.push({ id: generateId("e"), source: faceId, sourceHandle: "out", target: macroNode.id, targetHandle: "face_image" });
+      // VideoInput → OutputImage in1 (original)
+      edges.push({ id: generateId("e"), source: videoId, sourceHandle: "video", target: outImgId, targetHandle: "in1" });
+      // Wavespeed video → OutputImage in2 (result)
+      edges.push({ id: generateId("e"), source: macroNode.id, sourceHandle: "video", target: outImgId, targetHandle: "in2" });
+      // Wavespeed video → DownloadNode
+      edges.push({ id: generateId("e"), source: macroNode.id, sourceHandle: "video", target: downloadId, targetHandle: "in" });
 
       return { nodes, edges };
     },

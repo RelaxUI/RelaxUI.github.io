@@ -26,6 +26,14 @@ type Executor = (
   isStream: boolean,
 ) => Promise<void> | void;
 
+/** Resolve a dot-notation path against an object (shared by jsonPath & pollUntil). */
+function resolveJsonPath(obj: any, path: string): any {
+  return path
+    .replace(/\["?'?([^"']+)"?'?\]/g, ".$1")
+    .split(".")
+    .reduce((a: any, c: string) => a && a[c], obj);
+}
+
 const executors: Record<string, Executor> = {
   inputText: (node, _inputs, ctx) => {
     ctx.pushValue(node.id, "out", node.data.value);
@@ -78,12 +86,13 @@ const executors: Record<string, Executor> = {
     ctx.pushValue(node.id, "in", inputs["in"], isStream);
   },
 
-  customScript: (node, inputs, ctx, isStream) => {
+  customScript: async (node, inputs, ctx, isStream) => {
     if (!isStream) {
       const inputKeys = node.data.inputs || ["in1", "in2", "in3", "in4"];
       const funcArgs = inputKeys.map((k: string) => inputs[k]);
-      const func = new Function(...inputKeys, node.data.script);
-      const res = func(...funcArgs);
+      const AsyncFunction = Object.getPrototypeOf(async function () {}).constructor;
+      const func = new AsyncFunction(...inputKeys, node.data.script);
+      const res = await func(...funcArgs);
       ctx.pushValue(node.id, "out", res);
     }
   },
@@ -101,17 +110,20 @@ const executors: Record<string, Executor> = {
         body: method !== "GET" && body ? body : undefined,
       });
     } catch (err: any) {
-      throw new Error(`Fetch failed: ${err.message}. Check Network.`);
+      if (err instanceof TypeError && err.message === "Failed to fetch") {
+        throw new Error(`Request to ${url} blocked (CORS or network error). The API may not allow direct browser requests.`);
+      }
+      throw new Error(`Fetch failed: ${err.message}`);
     }
 
     if (!res.ok) {
       let text = await res.text();
       try {
-        text = JSON.parse(text).error.message || text;
+        text = JSON.parse(text).error?.message || JSON.parse(text).detail || text;
       } catch {
         // Response body is not JSON; use raw text
       }
-      throw new Error(`${res.status}: ${text}`);
+      throw new Error(`HTTP ${res.status}: ${text}`);
     }
 
     if (
@@ -154,14 +166,9 @@ const executors: Record<string, Executor> = {
 
   jsonPath: (node, inputs, ctx, isStream) => {
     if (!inputs.json) return;
-    const resolve = (obj: any, p: string) =>
-      p
-        .replace(/\["?'?([^"']+)"?'?\]/g, ".$1")
-        .split(".")
-        .reduce((a: any, c: string) => a && a[c], obj);
-    let val = resolve(inputs.json, node.data.path);
+    let val = resolveJsonPath(inputs.json, node.data.path);
     if (val === undefined)
-      val = resolve(
+      val = resolveJsonPath(
         inputs.json,
         node.data.path.replace(".delta.", ".message."),
       );
@@ -248,8 +255,24 @@ const executors: Record<string, Executor> = {
         false,
       );
 
-      const downstream = ctx.pushValue(node.id, "item", outVal, true);
+      const downstream = ctx.pushValue(node.id, "item", outVal, false);
       await Promise.all(downstream);
+
+      if (node.data.manualStep && ctx.isRunning && !ctx.stoppedNodes.has(node.id)) {
+        const progressData = {
+          current: Math.min(i + batchSize, list.length),
+          total: list.length,
+          item: outVal,
+          paused: false,
+          stopped: false,
+        };
+        ctx.setDisplayData(node.id, { ...progressData, waitingForStep: true }, false);
+        const stepResult = await new Promise<any>((resolve, reject) => {
+          ctx.pendingApprovals.set(node.id, { resolve, reject });
+        });
+        ctx.pendingApprovals.delete(node.id);
+        if (stepResult.action === "rework") { i -= batchSize; continue; }
+      }
 
       if (i + batchSize < list.length) {
         await new Promise((r) => setTimeout(r, delayMs));
@@ -272,6 +295,153 @@ const executors: Record<string, Executor> = {
     ctx.pushValue(node.id, "out", inputs.in, isStream);
   },
 
+  converter: async (node, inputs, ctx) => {
+    const val = inputs.in;
+    if (val === undefined || val === null) return;
+    const src = typeof val === "string" ? val : JSON.stringify(val);
+    const target = node.data.outputFormat || "dataURI";
+
+    // Detect source type
+    const isBlob = src.startsWith("blob:");
+    const isDataURI = src.startsWith("data:");
+    const isURL = src.startsWith("http://") || src.startsWith("https://");
+
+    let result: any = src;
+
+    if (target === "auto") {
+      // Pass-through
+      result = val;
+    } else if (target === "dataURI") {
+      if (isDataURI) {
+        result = src;
+      } else if (isBlob || isURL) {
+        const res = await fetch(src);
+        const blob = await res.blob();
+        result = await new Promise<string>((resolve, reject) => {
+          const rd = new FileReader();
+          rd.onloadend = () => resolve(rd.result as string);
+          rd.onerror = reject;
+          rd.readAsDataURL(blob);
+        });
+      } else {
+        // Text → data URI
+        result = "data:text/plain;base64," + btoa(unescape(encodeURIComponent(src)));
+      }
+    } else if (target === "blob") {
+      if (isBlob) {
+        result = src;
+      } else if (isDataURI) {
+        const res = await fetch(src);
+        const blob = await res.blob();
+        result = URL.createObjectURL(blob);
+      } else if (isURL) {
+        const res = await fetch(src);
+        const blob = await res.blob();
+        result = URL.createObjectURL(blob);
+      } else {
+        const blob = new Blob([src], { type: "text/plain" });
+        result = URL.createObjectURL(blob);
+      }
+    } else if (target === "url") {
+      // Pass URL through; for blob/dataURI warn that it can't produce a public URL
+      if (isURL) {
+        result = src;
+      } else {
+        result = src;
+      }
+    } else if (target === "text") {
+      if (isBlob || isURL) {
+        const res = await fetch(src);
+        result = await res.text();
+      } else if (isDataURI) {
+        const m = src.match(/^data:[^;]*;base64,(.*)$/);
+        if (m) {
+          result = decodeURIComponent(escape(atob(m[1]!)));
+        } else {
+          result = src;
+        }
+      } else {
+        result = src;
+      }
+    } else if (target === "json") {
+      if (isBlob || isURL) {
+        const res = await fetch(src);
+        result = await res.json();
+      } else {
+        try {
+          result = JSON.parse(src);
+        } catch {
+          result = src;
+        }
+      }
+    }
+
+    ctx.pushValue(node.id, "out", result);
+  },
+
+  pollUntil: async (node, inputs, ctx) => {
+    const url = inputs.url;
+    if (!url) return;
+    const headers = inputs.headers ? JSON.parse(inputs.headers) : {};
+    // Content-Type is meaningless for GET requests and can trigger CORS preflight failures
+    delete headers["Content-Type"];
+    delete headers["content-type"];
+    const resultUrl = inputs.resultUrl;
+    const interval = Math.max(500, node.data.interval ?? 2000);
+    const statusPath = node.data.statusPath || "status";
+    const doneValue = node.data.doneValue || "COMPLETED";
+    const failValue = node.data.failValue || "";
+
+    let count = 0;
+    while (ctx.isRunning) {
+      count++;
+      let res: Response;
+      try {
+        res = await fetch(url, { headers });
+      } catch (err: any) {
+        if (err instanceof TypeError && err.message === "Failed to fetch") {
+          throw new Error(`Poll request to ${url} blocked (CORS or network error). The API may not allow status polling from the browser.`);
+        }
+        throw new Error(`Poll request failed: ${err.message}`);
+      }
+      if (!res.ok) {
+        let text = "";
+        try { text = await res.text(); } catch { /* empty */ }
+        throw new Error(`Poll request failed: HTTP ${res.status}${text ? ` — ${text}` : ""}`);
+      }
+      const json = await res.json();
+      const currentStatus = String(resolveJsonPath(json, statusPath) ?? "");
+
+      ctx.setDisplayData(node.id, { status: currentStatus, count, polling: true }, false);
+
+      if (currentStatus === doneValue) {
+        let result = json;
+        if (resultUrl) {
+          let resultRes: Response;
+          try {
+            resultRes = await fetch(resultUrl, { headers });
+          } catch (err: any) {
+            if (err instanceof TypeError && err.message === "Failed to fetch") {
+              throw new Error(`Result fetch from ${resultUrl} blocked (CORS or network error).`);
+            }
+            throw new Error(`Result fetch failed: ${err.message}`);
+          }
+          if (!resultRes.ok) throw new Error(`Result fetch failed: HTTP ${resultRes.status}`);
+          result = await resultRes.json();
+        }
+        ctx.setDisplayData(node.id, { status: "done", count, polling: false }, false);
+        ctx.pushValue(node.id, "out", result);
+        return;
+      }
+      if (failValue && currentStatus === failValue) {
+        ctx.setDisplayData(node.id, { status: currentStatus, count, polling: false }, false);
+        throw new Error(`Queue job failed with status: ${currentStatus}`);
+      }
+
+      await new Promise((r) => setTimeout(r, interval));
+    }
+  },
+
   listAggregator: (node, inputs, ctx, isStream) => {
     // Store list inside the node's volatile execution data so we can append to it
     if (!node.data._internalList) node.data._internalList = [];
@@ -288,7 +458,7 @@ const executors: Record<string, Executor> = {
   },
 
   downloadData: (node, inputs, ctx, isStream) => {
-    ctx.setDisplayData(node.id, inputs.in, false);
+    ctx.setDisplayData(node.id, { data: inputs.in, name: inputs.name }, false);
   },
 
   imageProcess: async (node, inputs, ctx) => {
@@ -372,7 +542,7 @@ const executors: Record<string, Executor> = {
     });
     ctx.pendingApprovals.delete(node.id);
 
-    if (result.action === "approve" || result.action === "edit") {
+    if (result.action === "approve") {
       ctx.setDisplayData(node.id, { data: result.value, status: "approved" }, false);
       ctx.pushValue(node.id, "out", result.value);
     } else if (result.action === "rework") {

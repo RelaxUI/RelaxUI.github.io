@@ -165,9 +165,14 @@ export class GraphRunner {
         if (isStream) {
           promises.push(this.executeNode(tId, isStream));
         } else {
-          setTimeout(() => {
-            if (this.isRunning) this.executeNode(tId, isStream);
-          }, this.executionDelayMs);
+          promises.push(new Promise<void>((resolve) => {
+            setTimeout(async () => {
+              if (this.isRunning) {
+                await this.executeNode(tId, isStream);
+              }
+              resolve();
+            }, this.executionDelayMs);
+          }));
         }
       }
     });

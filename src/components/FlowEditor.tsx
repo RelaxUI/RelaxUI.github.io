@@ -1,4 +1,10 @@
-import { Background, Controls, MiniMap, ReactFlow } from "@xyflow/react";
+import {
+  Background,
+  BackgroundVariant,
+  Controls,
+  MiniMap,
+  ReactFlow,
+} from "@xyflow/react";
 import { useCallback, useEffect, useMemo, useState } from "react";
 
 import { ContextMenu } from "@/components/ContextMenu/ContextMenu.tsx";
@@ -259,7 +265,11 @@ export function FlowEditor() {
             maxZoom={2}
             defaultViewport={{ x: 50, y: 50, zoom: 1 }}
           >
-            <Background color="var(--relax-border)" gap={40} />
+            <Background
+              color="var(--relax-text-muted)"
+              gap={20}
+              variant={BackgroundVariant.Dots}
+            />
             <Controls
               showInteractive={false}
               className="bg-(--relax-bg-elevated)! border! border-(--relax-border)! rounded-lg! overflow-hidden shadow-[0_4px_15px_rgba(0,0,0,0.5)] [&>button]:border-0! [&>button]:border-b! [&>button]:border-solid! [&>button]:border-b-(--relax-border)! [&>button]:bg-transparent! [&>button]:fill-(--relax-text-muted)! [&>button]:transition-all [&>button]:duration-200 [&>button:hover]:bg-(--relax-border)! [&>button:hover]:fill-(--relax-accent)! [&>button:last-child]:border-b-0!"

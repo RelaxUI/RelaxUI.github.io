@@ -74,15 +74,27 @@ export const BaseNode = ({
       const startH = el.offsetHeight;
 
       const onMove = (ev: PointerEvent) => {
-        const newW = Math.max(dims.w * 0.5, startW + (ev.clientX - startX) / zoom);
-        const newH = Math.max(dims.h * 0.5, startH + (ev.clientY - startY) / zoom);
+        const newW = Math.max(
+          dims.w * 0.5,
+          startW + (ev.clientX - startX) / zoom,
+        );
+        const newH = Math.max(
+          dims.h * 0.5,
+          startH + (ev.clientY - startY) / zoom,
+        );
         el.style.width = `${Math.round(newW)}px`;
         el.style.minHeight = `${Math.round(newH)}px`;
       };
 
       const onUp = (ev: PointerEvent) => {
-        const finalW = Math.max(dims.w * 0.5, startW + (ev.clientX - startX) / zoom);
-        const finalH = Math.max(dims.h * 0.5, startH + (ev.clientY - startY) / zoom);
+        const finalW = Math.max(
+          dims.w * 0.5,
+          startW + (ev.clientX - startX) / zoom,
+        );
+        const finalH = Math.max(
+          dims.h * 0.5,
+          startH + (ev.clientY - startY) / zoom,
+        );
         updateNodeData(id, "_userWidth", Math.round(finalW));
         updateNodeData(id, "_userHeight", Math.round(finalH));
         window.removeEventListener("pointermove", onMove);
@@ -98,7 +110,7 @@ export const BaseNode = ({
   return (
     <div
       ref={nodeRef}
-      className={`relative bg-(--relax-bg-elevated)/95 backdrop-blur-md border transition-all duration-300 rounded-xl flex flex-col z-10 group
+      className={`relative bg-[linear-gradient(to_bottom,var(--relax-accent-dark),transparent)] border transition-all duration-300 rounded-xl flex flex-col z-10 group
         ${
           isError
             ? "border-red-500 shadow-[0_0_20px_rgba(239,68,68,0.4)]"
@@ -213,11 +225,19 @@ export const BaseNode = ({
       {/* Resize handle - nodrag prevents ReactFlow from capturing drag events */}
       <div
         onPointerDown={onResizePointerDown}
-        className={`nodrag absolute bottom-0 right-0 w-4 h-4 cursor-nwse-resize transition-opacity z-40 ${selected ? 'opacity-60' : 'opacity-0 group-hover:opacity-60'}`}
+        className={`nodrag absolute bottom-0 right-0 w-4 h-4 cursor-nwse-resize transition-opacity z-40 ${selected ? "opacity-60" : "opacity-0 group-hover:opacity-60"}`}
         title="Drag to resize"
       >
-        <svg viewBox="0 0 12 12" className="w-full h-full text-(--relax-text-muted)">
-          <path d="M11 1L1 11M11 5L5 11M11 9L9 11" stroke="currentColor" strokeWidth="1.5" fill="none" />
+        <svg
+          viewBox="0 0 12 12"
+          className="w-full h-full text-(--relax-text-muted)"
+        >
+          <path
+            d="M11 1L1 11M11 5L5 11M11 9L9 11"
+            stroke="currentColor"
+            strokeWidth="1.5"
+            fill="none"
+          />
         </svg>
       </div>
     </div>
