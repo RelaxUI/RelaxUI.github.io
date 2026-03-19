@@ -45,7 +45,7 @@ export const falai: MacroDefinition = {
         id: generateId("n"),
         type: "converter",
         macroId: mId,
-        position: { x: 200, y: 360 },
+        position: { x: 50, y: 510 },
         data: { outputFormat: "dataURI" },
       },
       // [5] headers script

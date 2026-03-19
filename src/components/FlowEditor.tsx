@@ -267,7 +267,7 @@ export function FlowEditor() {
           >
             <Background
               color="var(--relax-text-muted)"
-              gap={20}
+              gap={30}
               variant={BackgroundVariant.Dots}
             />
             <Controls

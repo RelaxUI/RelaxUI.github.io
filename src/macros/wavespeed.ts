@@ -116,7 +116,7 @@ export const wavespeed: MacroDefinition = {
         id: generateId("n"),
         type: "customScript",
         macroId: mId,
-        position: { x: 1600, y: 300 },
+        position: { x: 1600, y: 370 },
         data: {
           script:
             'return "https://api.wavespeed.ai/api/v3/predictions/" + in1 + "/result";',
