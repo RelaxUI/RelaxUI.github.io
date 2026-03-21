@@ -49,7 +49,7 @@ src/
 │   ├── FlowEditor.tsx              Main orchestrator (hooks + canvas + modals)
 │   ├── TopBar.tsx                  Header with breadcrumbs, file menu, actions
 │   ├── ImportDialog.tsx            Import from file, URL, or built-in registry
-│   ├── SettingsDialog.tsx          HF token, device, auto-save, undo history
+│   ├── SettingsDialog.tsx          HF token, device, auto-save, undo, theme colors
 │   ├── ContextMenu/               Right-click hierarchical node menu
 │   ├── NodeMenuList.tsx            Searchable hierarchical node picker
 │   ├── NodePickerPanel.tsx         Sidebar panel for adding nodes
@@ -112,11 +112,11 @@ Nodes are React components registered in `nodes/registry.ts`. Each node type has
 
 ### Macros
 
-Macros are reusable sub-workflows packaged as single nodes. Pre-built macros are generated from `pipelineRegistry.ts` and `modelClassRegistry.ts`. Users can also create custom macros via the MacroNode container.
+Macros are reusable sub-workflows packaged as single nodes. Pre-built macros are generated from `pipelineRegistry.ts` and `modelClassRegistry.ts`. Users can also create custom macros via the MacroNode container. API macros (fal.ai, Wavespeed, Replicate, OpenRouter) expose only `key` and `model` as inline parameters — all other API options are passed via an `extra_params` edge input (connect a JSON node to override defaults).
 
 ### Settings
 
-All settings persist to `localStorage` and are accessed via the `useSettings` hook (React) or `readSetting()` (non-React contexts like executors). Settings include: HF token, device preference, auto-save toggle/interval, and undo history size.
+All settings persist to `localStorage` and are accessed via the `useSettings` hook (React) or `readSetting()` (non-React contexts like executors). Settings include: HF token, device preference, auto-save toggle/interval, undo history size, and interface theme colors.
 
 ## Node Types
 
@@ -232,7 +232,7 @@ Adding a new parameter is registry-driven — add an entry to `src/config/genera
 
 ### Design Tokens
 
-Colors are CSS custom properties in `src/index.css`:
+Colors are CSS custom properties in `src/index.css`. The main interface colors (background, surface, border, accent) can be customized in **Settings > Interface Colors** — changes persist to `localStorage` and apply immediately. The defaults:
 
 ```css
 :root {
@@ -240,14 +240,8 @@ Colors are CSS custom properties in `src/index.css`:
   --relax-bg-elevated: #131820;
   --relax-border: #1f2630;
   --relax-border-hover: #2a323d;
-  --relax-border-active: #3f4b59;
-  --relax-text-muted: #5a6b7c;
-  --relax-text-default: #a0aec0;
-  --relax-text-bright: #ffffff;
-  --relax-accent: #00e5ff;
-  --relax-accent-dark: #011a1f;
-  --relax-success: #00ffaa;
-  --relax-error: #ef4444;
+  --relax-accent: #00ff78;
+  --relax-accent-gradient: linear-gradient(to top right, #00ff78, #007acc);
 }
 ```
 

@@ -18,6 +18,7 @@ interface TopBarProps {
   openSettings: () => void;
   openNodePicker: () => void;
   validateWorkflow: () => void;
+  saveWorkflow: () => void;
 }
 
 export function TopBar({
@@ -37,6 +38,7 @@ export function TopBar({
   openSettings,
   openNodePicker,
   validateWorkflow,
+  saveWorkflow,
 }: TopBarProps) {
   const [menuOpen, setMenuOpen] = useState(false);
   const [confirmAction, setConfirmAction] = useState<string | null>(null);
@@ -106,8 +108,18 @@ export function TopBar({
             className={`px-1.5 py-1 rounded text-[10px] font-bold transition-all ${canUndo ? "text-(--relax-text-muted) hover:text-(--relax-accent) hover:bg-(--relax-border)" : "text-(--relax-border) cursor-not-allowed"}`}
             title="Undo (Ctrl+Z)"
           >
-            <svg className="w-3.5 h-3.5" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M3 10h10a5 5 0 015 5v2M3 10l4-4M3 10l4 4" />
+            <svg
+              className="w-3.5 h-3.5"
+              fill="none"
+              viewBox="0 0 24 24"
+              stroke="currentColor"
+            >
+              <path
+                strokeLinecap="round"
+                strokeLinejoin="round"
+                strokeWidth={2}
+                d="M3 10h10a5 5 0 015 5v2M3 10l4-4M3 10l4 4"
+              />
             </svg>
           </button>
           <button
@@ -116,8 +128,18 @@ export function TopBar({
             className={`px-1.5 py-1 rounded text-[10px] font-bold transition-all ${canRedo ? "text-(--relax-text-muted) hover:text-(--relax-accent) hover:bg-(--relax-border)" : "text-(--relax-border) cursor-not-allowed"}`}
             title="Redo (Ctrl+Shift+Z)"
           >
-            <svg className="w-3.5 h-3.5" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M21 10H11a5 5 0 00-5 5v2m15-7l-4-4m4 4l-4 4" />
+            <svg
+              className="w-3.5 h-3.5"
+              fill="none"
+              viewBox="0 0 24 24"
+              stroke="currentColor"
+            >
+              <path
+                strokeLinecap="round"
+                strokeLinejoin="round"
+                strokeWidth={2}
+                d="M21 10H11a5 5 0 00-5 5v2m15-7l-4-4m4 4l-4 4"
+              />
             </svg>
           </button>
         </div>
@@ -131,8 +153,18 @@ export function TopBar({
           className={`cursor-pointer transition-colors flex items-center gap-1.5 shrink-0 ${!currentView ? "text-(--relax-accent) font-bold drop-shadow-[0_0_5px_rgba(0,229,255,0.5)]" : "text-(--relax-text-muted) hover:text-white"}`}
           onClick={() => setCurrentView(null)}
         >
-          <svg className="w-3.5 h-3.5 mb-px" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M3 12l2-2m0 0l7-7 7 7M5 10v10a1 1 0 001 1h3m10-11l2 2m-2-2v10a1 1 0 01-1 1h-3m-6 0a1 1 0 001-1v-4a1 1 0 011-1h2a1 1 0 011 1v4a1 1 0 001 1m-6 0h6" />
+          <svg
+            className="w-3.5 h-3.5 mb-px"
+            fill="none"
+            viewBox="0 0 24 24"
+            stroke="currentColor"
+          >
+            <path
+              strokeLinecap="round"
+              strokeLinejoin="round"
+              strokeWidth={2}
+              d="M3 12l2-2m0 0l7-7 7 7M5 10v10a1 1 0 001 1h3m10-11l2 2m-2-2v10a1 1 0 01-1 1h-3m-6 0a1 1 0 001-1v-4a1 1 0 011-1h2a1 1 0 011 1v4a1 1 0 001 1m-6 0h6"
+            />
           </svg>
           <span className="hidden md:inline">WORKFLOW</span>
         </span>
@@ -140,13 +172,25 @@ export function TopBar({
           const isLast = idx === breadcrumbs.length - 1;
           return (
             <div key={crumb.id} className="flex items-center gap-2 shrink-0">
-              <span className="text-(--relax-border-hover) font-black text-sm">/</span>
+              <span className="text-(--relax-border-hover) font-black text-sm">
+                /
+              </span>
               <span
                 className={`cursor-pointer flex items-center gap-1.5 transition-colors ${isLast ? "text-(--relax-accent) font-bold drop-shadow-[0_0_5px_rgba(0,229,255,0.5)]" : "text-(--relax-text-muted) hover:text-white"}`}
                 onClick={() => setCurrentView(crumb.id)}
               >
-                <svg className="w-3.5 h-3.5 mb-px" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M4 6a2 2 0 012-2h2a2 2 0 012 2v2a2 2 0 01-2 2H6a2 2 0 01-2-2V6zM14 6a2 2 0 012-2h2a2 2 0 012 2v2a2 2 0 01-2 2h-2a2 2 0 01-2-2V6zM4 16a2 2 0 012-2h2a2 2 0 012 2v2a2 2 0 01-2 2H6a2 2 0 01-2-2v-2zM14 16a2 2 0 012-2h2a2 2 0 012 2v2a2 2 0 01-2 2h-2a2 2 0 01-2-2v-2z" />
+                <svg
+                  className="w-3.5 h-3.5 mb-px"
+                  fill="none"
+                  viewBox="0 0 24 24"
+                  stroke="currentColor"
+                >
+                  <path
+                    strokeLinecap="round"
+                    strokeLinejoin="round"
+                    strokeWidth={2}
+                    d="M4 6a2 2 0 012-2h2a2 2 0 012 2v2a2 2 0 01-2 2H6a2 2 0 01-2-2V6zM14 6a2 2 0 012-2h2a2 2 0 012 2v2a2 2 0 01-2 2h-2a2 2 0 01-2-2V6zM4 16a2 2 0 012-2h2a2 2 0 012 2v2a2 2 0 01-2 2H6a2 2 0 01-2-2v-2zM14 16a2 2 0 012-2h2a2 2 0 012 2v2a2 2 0 01-2 2h-2a2 2 0 01-2-2v-2z"
+                  />
                 </svg>
                 {crumb.data.label?.toUpperCase()}
               </span>
@@ -162,17 +206,30 @@ export function TopBar({
           className="sm:hidden flex items-center gap-1.5 px-2 py-1 bg-(--relax-bg-elevated) border border-(--relax-border) rounded-full text-(--relax-accent) transition-colors min-w-0 shrink"
           title="Go back"
         >
-          <svg className="w-3 h-3 shrink-0" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2.5} d="M15 19l-7-7 7-7" />
+          <svg
+            className="w-3 h-3 shrink-0"
+            fill="none"
+            viewBox="0 0 24 24"
+            stroke="currentColor"
+          >
+            <path
+              strokeLinecap="round"
+              strokeLinejoin="round"
+              strokeWidth={2.5}
+              d="M15 19l-7-7 7-7"
+            />
           </svg>
           <span className="text-[9px] font-bold tracking-wider truncate max-w-20">
             {breadcrumbs.length > 1
-              ? breadcrumbs[breadcrumbs.length - 2]!.data.label?.toUpperCase() || "PARENT"
+              ? breadcrumbs[
+                  breadcrumbs.length - 2
+                ]!.data.label?.toUpperCase() || "PARENT"
               : "WORKFLOW"}
           </span>
           <span className="text-(--relax-border-hover)">/</span>
           <span className="text-[9px] font-bold tracking-wider truncate max-w-15 text-white">
-            {breadcrumbs[breadcrumbs.length - 1]?.data.label?.toUpperCase() || "MACRO"}
+            {breadcrumbs[breadcrumbs.length - 1]?.data.label?.toUpperCase() ||
+              "MACRO"}
           </span>
         </button>
       )}
@@ -185,8 +242,18 @@ export function TopBar({
           className="flex items-center gap-1.5 px-2 sm:px-3 py-1.5 bg-(--relax-border) border border-(--relax-border-hover) text-(--relax-text-muted) hover:text-(--relax-success) hover:border-(--relax-success) rounded-md transition-all text-[10px] font-bold tracking-wider shadow-lg"
           title="Add Node"
         >
-          <svg className="w-3.5 h-3.5" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 4v16m8-8H4" />
+          <svg
+            className="w-3.5 h-3.5"
+            fill="none"
+            viewBox="0 0 24 24"
+            stroke="currentColor"
+          >
+            <path
+              strokeLinecap="round"
+              strokeLinejoin="round"
+              strokeWidth={2}
+              d="M12 4v16m8-8H4"
+            />
           </svg>
           <span className="hidden sm:inline">ADD</span>
         </button>
@@ -203,8 +270,18 @@ export function TopBar({
             }}
             className={`flex items-center gap-1.5 px-2 sm:px-3 py-1.5 bg-(--relax-border) border rounded-md transition-all text-[10px] font-bold tracking-wider shadow-lg ${menuOpen ? "border-(--relax-accent) text-(--relax-accent)" : "border-(--relax-border-hover) text-(--relax-text-muted) hover:text-(--relax-accent) hover:border-(--relax-accent)"}`}
           >
-            <svg className="w-3.5 h-3.5" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M4 6h16M4 12h16M4 18h16" />
+            <svg
+              className="w-3.5 h-3.5"
+              fill="none"
+              viewBox="0 0 24 24"
+              stroke="currentColor"
+            >
+              <path
+                strokeLinecap="round"
+                strokeLinejoin="round"
+                strokeWidth={2}
+                d="M4 6h16M4 12h16M4 18h16"
+              />
             </svg>
             <span className="hidden sm:inline">FILE</span>
           </button>
@@ -215,14 +292,20 @@ export function TopBar({
               <div className="sm:hidden">
                 <div className="flex gap-1">
                   <button
-                    onClick={() => { undo(); setMenuOpen(false); }}
+                    onClick={() => {
+                      undo();
+                      setMenuOpen(false);
+                    }}
                     disabled={!canUndo}
                     className={`flex-1 text-center px-3 py-2 text-[10px] font-bold rounded transition-colors ${canUndo ? "text-(--relax-text-default) hover:bg-(--relax-border) hover:text-white" : "text-(--relax-border-active) cursor-not-allowed"}`}
                   >
                     UNDO
                   </button>
                   <button
-                    onClick={() => { redo(); setMenuOpen(false); }}
+                    onClick={() => {
+                      redo();
+                      setMenuOpen(false);
+                    }}
                     disabled={!canRedo}
                     className={`flex-1 text-center px-3 py-2 text-[10px] font-bold rounded transition-colors ${canRedo ? "text-(--relax-text-default) hover:bg-(--relax-border) hover:text-white" : "text-(--relax-border-active) cursor-not-allowed"}`}
                   >
@@ -230,7 +313,10 @@ export function TopBar({
                   </button>
                 </div>
                 <button
-                  onClick={() => { openSettings(); setMenuOpen(false); }}
+                  onClick={() => {
+                    openSettings();
+                    setMenuOpen(false);
+                  }}
                   className={menuItemClass}
                 >
                   SETTINGS
@@ -240,19 +326,37 @@ export function TopBar({
 
               {/* Workflow I/O */}
               <button
-                onClick={() => { openImport(); setMenuOpen(false); }}
+                onClick={() => {
+                  openImport();
+                  setMenuOpen(false);
+                }}
                 className={menuItemClass}
               >
                 IMPORT WORKFLOW
               </button>
               <button
-                onClick={() => { exportFlow(); setMenuOpen(false); }}
+                onClick={() => {
+                  exportFlow();
+                  setMenuOpen(false);
+                }}
                 className={menuItemClass}
               >
                 EXPORT WORKFLOW
               </button>
               <button
-                onClick={() => { validateWorkflow(); setMenuOpen(false); }}
+                onClick={() => {
+                  saveWorkflow();
+                  setMenuOpen(false);
+                }}
+                className={menuItemClass}
+              >
+                SAVE WORKFLOW
+              </button>
+              <button
+                onClick={() => {
+                  validateWorkflow();
+                  setMenuOpen(false);
+                }}
                 className={menuItemClass}
               >
                 VALIDATE WORKFLOW
@@ -265,7 +369,9 @@ export function TopBar({
                 onClick={() => handleDangerAction("clear")}
                 className={dangerItemClass}
               >
-                {confirmAction === "clear" ? "CONFIRM CLEAR?" : "CLEAR WORKFLOW"}
+                {confirmAction === "clear"
+                  ? "CONFIRM CLEAR?"
+                  : "CLEAR WORKFLOW"}
               </button>
             </div>
           )}
@@ -277,9 +383,24 @@ export function TopBar({
           className="hidden sm:flex items-center gap-1.5 px-3 py-1.5 bg-(--relax-border) border border-(--relax-border-hover) text-(--relax-text-muted) hover:text-(--relax-accent) hover:border-(--relax-accent) rounded-md transition-all text-[10px] font-bold tracking-wider shadow-lg"
           title="Settings"
         >
-          <svg className="w-3.5 h-3.5" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M10.325 4.317c.426-1.756 2.924-1.756 3.35 0a1.724 1.724 0 002.573 1.066c1.543-.94 3.31.826 2.37 2.37a1.724 1.724 0 001.066 2.573c1.756.426 1.756 2.924 0 3.35a1.724 1.724 0 00-1.066 2.573c.94 1.543-.826 3.31-2.37 2.37a1.724 1.724 0 00-2.573 1.066c-.426 1.756-2.924 1.756-3.35 0a1.724 1.724 0 00-2.573-1.066c-1.543.94-3.31-.826-2.37-2.37a1.724 1.724 0 00-1.066-2.573c-1.756-.426-1.756-2.924 0-3.35a1.724 1.724 0 001.066-2.573c-.94-1.543.826-3.31 2.37-2.37.996.608 2.296.07 2.572-1.065z" />
-            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M15 12a3 3 0 11-6 0 3 3 0 016 0z" />
+          <svg
+            className="w-3.5 h-3.5"
+            fill="none"
+            viewBox="0 0 24 24"
+            stroke="currentColor"
+          >
+            <path
+              strokeLinecap="round"
+              strokeLinejoin="round"
+              strokeWidth={2}
+              d="M10.325 4.317c.426-1.756 2.924-1.756 3.35 0a1.724 1.724 0 002.573 1.066c1.543-.94 3.31.826 2.37 2.37a1.724 1.724 0 001.066 2.573c1.756.426 1.756 2.924 0 3.35a1.724 1.724 0 00-1.066 2.573c.94 1.543-.826 3.31-2.37 2.37a1.724 1.724 0 00-2.573 1.066c-.426 1.756-2.924 1.756-3.35 0a1.724 1.724 0 00-2.573-1.066c-1.543.94-3.31-.826-2.37-2.37a1.724 1.724 0 00-1.066-2.573c-1.756-.426-1.756-2.924 0-3.35a1.724 1.724 0 001.066-2.573c-.94-1.543.826-3.31 2.37-2.37.996.608 2.296.07 2.572-1.065z"
+            />
+            <path
+              strokeLinecap="round"
+              strokeLinejoin="round"
+              strokeWidth={2}
+              d="M15 12a3 3 0 11-6 0 3 3 0 016 0z"
+            />
           </svg>
           <span>SETTINGS</span>
         </button>
@@ -292,9 +413,7 @@ export function TopBar({
             title="Stop"
           >
             <div className="w-2 h-2 rounded-sm shrink-0 bg-current" />
-            <b className="tracking-widest mt-px text-[10px] sm:text-xs">
-              STOP
-            </b>
+            <b className="tracking-widest mt-px text-[10px] sm:text-xs">STOP</b>
           </button>
         ) : (
           <button
@@ -305,9 +424,7 @@ export function TopBar({
             <div
               className={`w-2 h-2 rounded-full shrink-0 transition-colors ${runStatus === "COMPLETED" ? "bg-(--relax-success)" : runStatus === "ERROR" ? "bg-red-500" : "bg-current"}`}
             />
-            <b className="tracking-widest mt-px text-[10px] sm:text-xs">
-              RUN
-            </b>
+            <b className="tracking-widest mt-px text-[10px] sm:text-xs">RUN</b>
             <svg
               className="w-3.5 h-3.5 ml-1 opacity-80 group-hover:opacity-100 group-hover:translate-x-0.5 transition-all hidden sm:block"
               viewBox="0 0 24 24"

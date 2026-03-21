@@ -15,6 +15,7 @@ import {
 import { useCallback, useEffect, useState } from "react";
 
 const LOCAL_STORAGE_KEY = "relaxui_autosave_v1";
+const SAVED_WORKFLOWS_KEY = "relaxui_saved_workflows_v1";
 
 function getDefaultGraph() {
   const textId = generateId("n");
@@ -237,6 +238,47 @@ export function useFlowState() {
     [setNodes, setEdges, reactFlowInstance],
   );
 
+  const saveWorkflowToRegistry = useCallback(
+    (name: string, description: string) => {
+      const savedNodes = nodes.map((n: any) => {
+        const data = { ...n.data };
+        if (n.type === "folderInput") {
+          delete data.value;
+          delete data.fileMeta;
+          delete data.count;
+        }
+        for (const key of Object.keys(data)) {
+          if (typeof data[key] === "string" && data[key].length > 65536 && data[key].startsWith("data:")) {
+            delete data[key];
+          }
+        }
+        return { ...n, data };
+      });
+      const flow = {
+        nodes: savedNodes,
+        edges,
+        viewport: reactFlowInstance ? reactFlowInstance.getViewport() : { x: 0, y: 0, zoom: 1 },
+      };
+      const entry = {
+        id: `saved_${Date.now()}`,
+        name,
+        description,
+        tags: ["saved"],
+        savedAt: Date.now(),
+        flow,
+      };
+      const existing = JSON.parse(localStorage.getItem(SAVED_WORKFLOWS_KEY) || "[]");
+      existing.push(entry);
+      localStorage.setItem(SAVED_WORKFLOWS_KEY, JSON.stringify(existing));
+    },
+    [nodes, edges, reactFlowInstance],
+  );
+
+  const deleteSavedWorkflow = useCallback((id: string) => {
+    const existing = JSON.parse(localStorage.getItem(SAVED_WORKFLOWS_KEY) || "[]");
+    localStorage.setItem(SAVED_WORKFLOWS_KEY, JSON.stringify(existing.filter((w: any) => w.id !== id)));
+  }, []);
+
   const onNodesDelete = useCallback(
     (deleted: any[]) => {
       const childrenToDelete = reactFlowInstance
@@ -332,6 +374,8 @@ export function useFlowState() {
     removeEdgeByHandle,
     exportFlow,
     importFlow,
+    saveWorkflowToRegistry,
+    deleteSavedWorkflow,
     onNodesDelete,
     addNode,
     handleNodesChange,

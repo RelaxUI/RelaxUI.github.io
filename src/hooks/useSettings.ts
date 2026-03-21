@@ -1,5 +1,16 @@
 import { useCallback, useSyncExternalStore } from "react";
 
+export interface ThemeColors {
+  bgPrimary: string;
+  bgElevated: string;
+  border: string;
+  borderHover: string;
+  accent: string;
+  accentGradientEnd: string;
+}
+
+export type HandleLayout = "compact" | "space-between" | "space-around";
+
 export interface AppSettings {
   hfToken: string;
   devicePreference: "auto" | "webgpu" | "wasm";
@@ -8,9 +19,20 @@ export interface AppSettings {
   undoHistorySize: number;
   debugMode: boolean;
   macroSettings: Record<string, string>;
+  themeColors: ThemeColors;
+  handleLayout: HandleLayout;
 }
 
 const STORAGE_KEY = "relaxui_settings";
+
+export const DEFAULT_THEME: ThemeColors = {
+  bgPrimary: "#0b0e14",
+  bgElevated: "#131820",
+  border: "#1f2630",
+  borderHover: "#2a323d",
+  accent: "#00ff78",
+  accentGradientEnd: "#007acc",
+};
 
 const DEFAULT_SETTINGS: AppSettings = {
   hfToken: "",
@@ -20,6 +42,8 @@ const DEFAULT_SETTINGS: AppSettings = {
   undoHistorySize: 50,
   debugMode: false,
   macroSettings: {},
+  themeColors: { ...DEFAULT_THEME },
+  handleLayout: "compact" as HandleLayout,
 };
 
 let listeners: (() => void)[] = [];

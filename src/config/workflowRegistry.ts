@@ -2163,1016 +2163,192 @@ WORKFLOW_REGISTRY.push(
 
 /* ─── API Workflows ──────────────────────────────────────────────────────── */
 
+/* ── Shared Synthetic Dataset Factory ──
+ * All three API synthetic dataset workflows (fal.ai, Wavespeed, Replicate) share
+ * the same structure: FolderInput → BatchIterator → ImageProcess → API Macro →
+ * 5x NamedAggregator → Merge → ZIP. They differ only in the API macro used,
+ * its output handle name, its image input handle name, and optional rate-limit delay.
+ */
+interface SyntheticDatasetConfig {
+  macroKey: string;
+  imageInputHandle: string;
+  resultOutputHandle: string;
+  addDelay?: number;
+}
+
+function createSyntheticDatasetWorkflow(
+  config: SyntheticDatasetConfig,
+): { nodes: FlowNode[]; edges: Edge[] } {
+  const nodes: FlowNode[] = [];
+  const edges: Edge[] = [];
+
+  const cx = { input: 0, iter: 300, proc1: 620, counter: 1000, macro: 1100, convert: 1500, proc2: 1500, agg: 1850, merge: 2200, out: 2550 };
+
+  // ── Inputs ──
+  const folderId = generateId("n");
+  nodes.push({ id: folderId, type: "folderInput", position: { x: cx.input, y: 0 }, data: {} });
+
+  const promptId = generateId("n");
+  nodes.push({ id: promptId, type: "inputText", position: { x: cx.input, y: 280 }, data: { value: "make it look like a painting", label: "Prompt" } });
+
+  const captionId = generateId("n");
+  nodes.push({ id: captionId, type: "inputText", position: { x: cx.input, y: 480 }, data: { value: "a painting style image", label: "Caption" } });
+
+  // ── BatchIterator ──
+  const iterId = generateId("n");
+  nodes.push({ id: iterId, type: "batchIterator", position: { x: cx.iter, y: 0 }, data: { batchSize: 1, delayMs: 0, manualStep: true } });
+
+  // ── ImageProcess target ──
+  const imgProcTargetId = generateId("n");
+  nodes.push({ id: imgProcTargetId, type: "imageProcess", position: { x: cx.proc1, y: 0 }, data: { outputFormat: "jpg", quality: 95, resolution: "2K" } });
+
+  // ── Counter ──
+  const counterId = generateId("n");
+  nodes.push({ id: counterId, type: "counterNode", position: { x: cx.counter, y: 0 }, data: { prefix: "", suffix: "", start: 1, step: 1 } });
+
+  // ── Optional Delay (Replicate rate limiting) ──
+  let delayId: string | null = null;
+  if (config.addDelay) {
+    delayId = generateId("n");
+    nodes.push({ id: delayId, type: "delay", position: { x: cx.counter, y: -200 }, data: { delayMs: config.addDelay } });
+  }
+
+  // ── API Macro ──
+  const macroResult = PREBUILT_MACROS[config.macroKey]!.create({ x: cx.macro, y: -250 }, null);
+  const macroNode = macroResult.nodes[0]!;
+  nodes.push(...macroResult.nodes);
+  edges.push(...macroResult.edges);
+
+  // ── Converters ──
+  const origConverterId = generateId("n");
+  nodes.push({ id: origConverterId, type: "converter", position: { x: cx.convert, y: -250 }, data: { outputFormat: "dataURI" } });
+
+  const genConverterId = generateId("n");
+  nodes.push({ id: genConverterId, type: "converter", position: { x: cx.convert, y: 0 }, data: { outputFormat: "dataURI" } });
+
+  // ── ImageProcess control (resize API output to match target) ──
+  const imgProcControlId = generateId("n");
+  nodes.push({ id: imgProcControlId, type: "imageProcess", position: { x: cx.proc2, y: 250 }, data: { outputFormat: "jpg", quality: 95, resolution: "2K" } });
+
+  // ── 5x Named Aggregator macros ──
+  const folders = [
+    { name: "target", ext: ".jpg", y: -50 },
+    { name: "control", ext: ".jpg", y: 250 },
+    { name: "original", ext: ".png", y: 550 },
+    { name: "generated", ext: ".png", y: 850 },
+    { name: "captions", ext: ".txt", y: 1150 },
+  ];
+
+  const aggMacroIds: string[] = [];
+  for (const f of folders) {
+    const aggResult = PREBUILT_MACROS.namedAggregator!.create({ x: cx.agg, y: f.y }, null);
+    const aggMacro = aggResult.nodes[0]!;
+    aggMacro.data.folder = f.name;
+    aggMacro.data.ext = f.ext;
+    aggMacroIds.push(aggMacro.id);
+    nodes.push(...aggResult.nodes);
+    edges.push(...aggResult.edges);
+  }
+
+  // ── MergeNode (5 inputs) ──
+  const mergeId = generateId("n");
+  nodes.push({ id: mergeId, type: "mergeNode", position: { x: cx.merge, y: 500 }, data: { mode: "concat", inputs: ["in1", "in2", "in3", "in4", "in5"] } });
+
+  // ── OutputImage (preview) ──
+  const outImgId = generateId("n");
+  nodes.push({ id: outImgId, type: "outputImage", position: { x: cx.out, y: -400 }, data: { _userWidth: 800, _userHeight: 800 } });
+
+  // ── DownloadData (ZIP) ──
+  const downloadId = generateId("n");
+  nodes.push({ id: downloadId, type: "downloadData", position: { x: cx.out, y: 500 }, data: { format: "zip" } });
+
+  // ═══ EDGES ═══
+
+  edges.push({ id: generateId("e"), source: folderId, sourceHandle: "images", target: iterId, targetHandle: "list" });
+  edges.push({ id: generateId("e"), source: iterId, sourceHandle: "item", target: imgProcTargetId, targetHandle: "image" });
+  edges.push({ id: generateId("e"), source: iterId, sourceHandle: "item", target: counterId, targetHandle: "trigger" });
+
+  // Counter → all 5 Named Aggregators counter input
+  for (const aggId of aggMacroIds) {
+    edges.push({ id: generateId("e"), source: counterId, sourceHandle: "count", target: aggId, targetHandle: "counter" });
+  }
+
+  // Image → API macro (with optional delay)
+  if (delayId) {
+    edges.push({ id: generateId("e"), source: imgProcTargetId, sourceHandle: "out", target: delayId, targetHandle: "in" });
+    edges.push({ id: generateId("e"), source: delayId, sourceHandle: "out", target: macroNode.id, targetHandle: config.imageInputHandle });
+  } else {
+    edges.push({ id: generateId("e"), source: imgProcTargetId, sourceHandle: "out", target: macroNode.id, targetHandle: config.imageInputHandle });
+  }
+  edges.push({ id: generateId("e"), source: promptId, sourceHandle: "out", target: macroNode.id, targetHandle: "prompt" });
+
+  // Target: imgProcTarget → agg[0]
+  edges.push({ id: generateId("e"), source: imgProcTargetId, sourceHandle: "out", target: aggMacroIds[0]!, targetHandle: "item" });
+
+  // API result → genConverter
+  edges.push({ id: generateId("e"), source: macroNode.id, sourceHandle: config.resultOutputHandle, target: genConverterId, targetHandle: "in" });
+
+  // genConverter → imgProcControl
+  edges.push({ id: generateId("e"), source: genConverterId, sourceHandle: "out", target: imgProcControlId, targetHandle: "image" });
+  edges.push({ id: generateId("e"), source: imgProcTargetId, sourceHandle: "size", target: imgProcControlId, targetHandle: "size" });
+
+  // Control: imgProcControl → agg[1]
+  edges.push({ id: generateId("e"), source: imgProcControlId, sourceHandle: "out", target: aggMacroIds[1]!, targetHandle: "item" });
+
+  // Original: raw → origConverter → agg[2]
+  edges.push({ id: generateId("e"), source: iterId, sourceHandle: "item", target: origConverterId, targetHandle: "in" });
+  edges.push({ id: generateId("e"), source: origConverterId, sourceHandle: "out", target: aggMacroIds[2]!, targetHandle: "item" });
+
+  // Generated: genConverter → agg[3]
+  edges.push({ id: generateId("e"), source: genConverterId, sourceHandle: "out", target: aggMacroIds[3]!, targetHandle: "item" });
+
+  // Captions: caption text → agg[4]
+  edges.push({ id: generateId("e"), source: captionId, sourceHandle: "out", target: aggMacroIds[4]!, targetHandle: "item" });
+
+  // 5x Named Aggregator → MergeNode
+  aggMacroIds.forEach((aggId, i) => {
+    edges.push({ id: generateId("e"), source: aggId, sourceHandle: "list", target: mergeId, targetHandle: `in${i + 1}` });
+  });
+
+  edges.push({ id: generateId("e"), source: mergeId, sourceHandle: "out", target: downloadId, targetHandle: "in" });
+
+  // Preview
+  edges.push({ id: generateId("e"), source: iterId, sourceHandle: "item", target: outImgId, targetHandle: "in1" });
+  edges.push({ id: generateId("e"), source: macroNode.id, sourceHandle: config.resultOutputHandle, target: outImgId, targetHandle: "in2" });
+
+  return { nodes, edges };
+}
+
 WORKFLOW_REGISTRY.push(
   {
     id: "falai-synthetic-dataset",
     name: "fal.ai — Synthetic Dataset",
     description:
-      "Full synthetic dataset pipeline: iterate images through fal.ai, produce a ZIP with configurable folder structure (target/, control/, original/) containing processed images and captions. All folder names and file patterns are user-configurable.",
+      "Synthetic dataset pipeline using fal.ai: processes images, sends to API, resizes output to match. Produces a ZIP with target/, control/, original/, generated/, and captions/ folders.",
     category: "API Workflows",
-    tags: [
-      "fal.ai",
-      "image",
-      "editing",
-      "batch",
-      "dataset",
-      "zip",
-      "synthetic",
-    ],
+    tags: ["fal.ai", "image", "editing", "batch", "dataset", "zip", "synthetic"],
     defaultModel: "fal-ai/bytedance/seedream/v5/lite/edit",
-    create: () => {
-      const nodes: FlowNode[] = [];
-      const edges: Edge[] = [];
-      // Column x positions (left edge), computed from node widths + 60px gaps:
-      //   folderInput 220w  → +280 → batchIter 220w → +280 → counter 240w
-      //   folderNames 220w  → +300 → textTemplates 260w → +320 → macro 260w
-      //   imgProc 280w      → +360 → listAgg 280w → +360 → merge 220w → +300 → output
-      const cx = {
-        input: 0,
-        iter: 300,
-        names: 580,
-        paths: 880,
-        macro: 1200,
-        proc: 1520,
-        agg: 1880,
-        merge: 2240,
-        out: 2540,
-      };
-
-      // ── Left column: inputs ──
-      const folderId = generateId("n");
-      nodes.push({
-        id: folderId,
-        type: "folderInput",
-        position: { x: cx.input, y: 0 },
-        data: {},
-      });
-      // folderInput: (0-220, 0-220)
-
-      const promptId = generateId("n");
-      nodes.push({
-        id: promptId,
-        type: "inputText",
-        position: { x: cx.input, y: 280 },
-        data: { value: "make it look like a painting", label: "Prompt" },
-      });
-      // inputText: (0-220, 280-420)
-
-      const captionId = generateId("n");
-      nodes.push({
-        id: captionId,
-        type: "inputText",
-        position: { x: cx.input, y: 480 },
-        data: { value: "a painting style image", label: "Caption" },
-      });
-      // inputText: (0-220, 480-620)
-
-      // ── BatchIterator ──
-      const iterId = generateId("n");
-      nodes.push({
-        id: iterId,
-        type: "batchIterator",
-        position: { x: cx.iter, y: 0 },
-        data: { batchSize: 1, delayMs: 0, manualStep: true },
-      });
-      // batchIterator: (300-520, 0-200)
-
-      // ── Counter ──
-      const counterId = generateId("n");
-      nodes.push({
-        id: counterId,
-        type: "counterNode",
-        position: { x: cx.names, y: 0 },
-        data: { prefix: "", suffix: "", start: 1, step: 1 },
-      });
-      // counterNode: (580-820, 0-240)
-
-      // ── Folder name inputs (below counter, 50px gaps) ──
-      const targetFolderNameId = generateId("n");
-      nodes.push({
-        id: targetFolderNameId,
-        type: "inputText",
-        position: { x: cx.names, y: 300 },
-        data: { value: "target", label: "Target Folder" },
-      });
-      // inputText: (580-800, 300-440)
-
-      const controlFolderNameId = generateId("n");
-      nodes.push({
-        id: controlFolderNameId,
-        type: "inputText",
-        position: { x: cx.names, y: 490 },
-        data: { value: "control", label: "Control Folder" },
-      });
-      // inputText: (580-800, 490-630)
-
-      const originalFolderNameId = generateId("n");
-      nodes.push({
-        id: originalFolderNameId,
-        type: "inputText",
-        position: { x: cx.names, y: 680 },
-        data: { value: "original", label: "Original Folder" },
-      });
-      // inputText: (580-800, 680-820)
-
-      const captionFolderNameId = generateId("n");
-      nodes.push({
-        id: captionFolderNameId,
-        type: "inputText",
-        position: { x: cx.names, y: 870 },
-        data: { value: "captions", label: "Captions Folder" },
-      });
-      // inputText: (580-800, 870-1010)
-
-      // ── TextTemplate for paths (4x, 50px vertical gaps) ──
-      const targetPathId = generateId("n");
-      nodes.push({
-        id: targetPathId,
-        type: "textTemplate",
-        position: { x: cx.paths, y: 300 },
-        data: { template: "{{var1}}/{{var2}}.jpg", inputs: ["var1", "var2"] },
-      });
-      // textTemplate: (880-1140, 300-520)
-
-      const controlPathId = generateId("n");
-      nodes.push({
-        id: controlPathId,
-        type: "textTemplate",
-        position: { x: cx.paths, y: 570 },
-        data: { template: "{{var1}}/{{var2}}.jpg", inputs: ["var1", "var2"] },
-      });
-      // textTemplate: (880-1140, 570-790)
-
-      const originalPathId = generateId("n");
-      nodes.push({
-        id: originalPathId,
-        type: "textTemplate",
-        position: { x: cx.paths, y: 840 },
-        data: { template: "{{var1}}/{{var2}}.png", inputs: ["var1", "var2"] },
-      });
-      // textTemplate: (880-1140, 840-1060)
-
-      const captionPathId = generateId("n");
-      nodes.push({
-        id: captionPathId,
-        type: "textTemplate",
-        position: { x: cx.paths, y: 1110 },
-        data: { template: "{{var1}}/{{var2}}.txt", inputs: ["var1", "var2"] },
-      });
-      // textTemplate: (880-1140, 1110-1330)
-
-      // ── fal.ai Macro ──
-      const macroResult = PREBUILT_MACROS.falai!.create(
-        { x: cx.macro, y: 500 },
-        null,
-      );
-      const macroNode = macroResult.nodes[0]!;
-      nodes.push(...macroResult.nodes);
-      edges.push(...macroResult.edges);
-      // macroNode: (1200-1460, 500-720)
-
-      // ── ImageProcess for target (resize + JPG from original) ──
-      const imgProcTargetId = generateId("n");
-      nodes.push({
-        id: imgProcTargetId,
-        type: "imageProcess",
-        position: { x: cx.proc, y: 0 },
-        data: { outputFormat: "jpg", quality: 95, resolution: "2K" },
-      });
-      // imageProcess: (1520-1800, 0-420)
-
-      // ── ImageProcess for control (resize + JPG from AI output) ──
-      const imgProcControlId = generateId("n");
-      nodes.push({
-        id: imgProcControlId,
-        type: "imageProcess",
-        position: { x: cx.proc, y: 500 },
-        data: { outputFormat: "jpg", quality: 95, resolution: "2K" },
-      });
-      // imageProcess: (1520-1800, 500-920)
-
-      // ── Converter for original (fal.ai URL → data URI) ──
-      const origConverterId = generateId("n");
-      nodes.push({
-        id: origConverterId,
-        type: "converter",
-        position: { x: cx.proc, y: 960 },
-        data: { outputFormat: "dataURI" },
-      });
-      // converter: (1520-1740, 960-1120)
-
-      // ── 4x ListAggregators (100px vertical gaps) ──
-      const agg1Id = generateId("n"); // target
-      nodes.push({
-        id: agg1Id,
-        type: "listAggregator",
-        position: { x: cx.agg, y: 100 },
-        data: {},
-      });
-      // listAggregator: (1880-2160, 100-340)
-
-      const agg2Id = generateId("n"); // control
-      nodes.push({
-        id: agg2Id,
-        type: "listAggregator",
-        position: { x: cx.agg, y: 440 },
-        data: {},
-      });
-      // listAggregator: (1880-2160, 440-680)
-
-      const agg3Id = generateId("n"); // original
-      nodes.push({
-        id: agg3Id,
-        type: "listAggregator",
-        position: { x: cx.agg, y: 780 },
-        data: {},
-      });
-      // listAggregator: (1880-2160, 780-1020)
-
-      const agg4Id = generateId("n"); // captions
-      nodes.push({
-        id: agg4Id,
-        type: "listAggregator",
-        position: { x: cx.agg, y: 1120 },
-        data: {},
-      });
-      // listAggregator: (1880-2160, 1120-1360)
-
-      // ── MergeNode (concat mode, 4 inputs) ──
-      const mergeId = generateId("n");
-      nodes.push({
-        id: mergeId,
-        type: "mergeNode",
-        position: { x: cx.merge, y: 640 },
-        data: { mode: "concat", inputs: ["in1", "in2", "in3", "in4"] },
-      });
-      // mergeNode: (2240-2460, 640-820)
-
-      // ── OutputImage (preview) ──
-      const outImgId = generateId("n");
-      nodes.push({
-        id: outImgId,
-        type: "outputImage",
-        position: { x: cx.out, y: -200 },
-        data: { _userWidth: 800, _userHeight: 800 },
-      });
-      // outputImage: (2540-3340, -200-600)
-
-      // ── DownloadData (ZIP) ──
-      const downloadId = generateId("n");
-      nodes.push({
-        id: downloadId,
-        type: "downloadData",
-        position: { x: cx.out, y: 640 },
-        data: { format: "zip" },
-      });
-      // downloadData: (2540-2780, 640-850)
-
-      // ═══ EDGES ═══
-
-      // FolderInput → BatchIterator
-      edges.push({
-        id: generateId("e"),
-        source: folderId,
-        sourceHandle: "images",
-        target: iterId,
-        targetHandle: "list",
-      });
-
-      // BatchIterator → Counter trigger
-      edges.push({
-        id: generateId("e"),
-        source: iterId,
-        sourceHandle: "item",
-        target: counterId,
-        targetHandle: "trigger",
-      });
-
-      // Counter count → all 4 TextTemplate var2
-      edges.push({
-        id: generateId("e"),
-        source: counterId,
-        sourceHandle: "count",
-        target: targetPathId,
-        targetHandle: "var2",
-      });
-      edges.push({
-        id: generateId("e"),
-        source: counterId,
-        sourceHandle: "count",
-        target: controlPathId,
-        targetHandle: "var2",
-      });
-      edges.push({
-        id: generateId("e"),
-        source: counterId,
-        sourceHandle: "count",
-        target: originalPathId,
-        targetHandle: "var2",
-      });
-      edges.push({
-        id: generateId("e"),
-        source: counterId,
-        sourceHandle: "count",
-        target: captionPathId,
-        targetHandle: "var2",
-      });
-
-      // Folder name inputs → TextTemplate var1
-      edges.push({
-        id: generateId("e"),
-        source: targetFolderNameId,
-        sourceHandle: "out",
-        target: targetPathId,
-        targetHandle: "var1",
-      });
-      edges.push({
-        id: generateId("e"),
-        source: controlFolderNameId,
-        sourceHandle: "out",
-        target: controlPathId,
-        targetHandle: "var1",
-      });
-      edges.push({
-        id: generateId("e"),
-        source: originalFolderNameId,
-        sourceHandle: "out",
-        target: originalPathId,
-        targetHandle: "var1",
-      });
-      edges.push({
-        id: generateId("e"),
-        source: captionFolderNameId,
-        sourceHandle: "out",
-        target: captionPathId,
-        targetHandle: "var1",
-      });
-
-      // Iterator → fal.ai macro (image_url)
-      edges.push({
-        id: generateId("e"),
-        source: iterId,
-        sourceHandle: "item",
-        target: macroNode.id,
-        targetHandle: "image_url",
-      });
-      // Prompt → fal.ai macro (prompt)
-      edges.push({
-        id: generateId("e"),
-        source: promptId,
-        sourceHandle: "out",
-        target: macroNode.id,
-        targetHandle: "prompt",
-      });
-
-      // Iterator item → ImageProcess target (resize original for target folder)
-      edges.push({
-        id: generateId("e"),
-        source: iterId,
-        sourceHandle: "item",
-        target: imgProcTargetId,
-        targetHandle: "image",
-      });
-
-      // fal.ai image → ImageProcess control
-      edges.push({
-        id: generateId("e"),
-        source: macroNode.id,
-        sourceHandle: "image",
-        target: imgProcControlId,
-        targetHandle: "image",
-      });
-
-      // ImageProcess target out → ListAgg1 item
-      edges.push({
-        id: generateId("e"),
-        source: imgProcTargetId,
-        sourceHandle: "out",
-        target: agg1Id,
-        targetHandle: "item",
-      });
-      // TextTemplate target path → ListAgg1 name
-      edges.push({
-        id: generateId("e"),
-        source: targetPathId,
-        sourceHandle: "out",
-        target: agg1Id,
-        targetHandle: "name",
-      });
-
-      // ImageProcess control out → ListAgg2 item
-      edges.push({
-        id: generateId("e"),
-        source: imgProcControlId,
-        sourceHandle: "out",
-        target: agg2Id,
-        targetHandle: "item",
-      });
-      // TextTemplate control path → ListAgg2 name
-      edges.push({
-        id: generateId("e"),
-        source: controlPathId,
-        sourceHandle: "out",
-        target: agg2Id,
-        targetHandle: "name",
-      });
-
-      // fal.ai image → Converter (URL → data URI) → ListAgg3 item
-      edges.push({
-        id: generateId("e"),
-        source: macroNode.id,
-        sourceHandle: "image",
-        target: origConverterId,
-        targetHandle: "in",
-      });
-      edges.push({
-        id: generateId("e"),
-        source: origConverterId,
-        sourceHandle: "out",
-        target: agg3Id,
-        targetHandle: "item",
-      });
-      // TextTemplate original path → ListAgg3 name
-      edges.push({
-        id: generateId("e"),
-        source: originalPathId,
-        sourceHandle: "out",
-        target: agg3Id,
-        targetHandle: "name",
-      });
-
-      // Caption text → ListAgg4 item
-      edges.push({
-        id: generateId("e"),
-        source: captionId,
-        sourceHandle: "out",
-        target: agg4Id,
-        targetHandle: "item",
-      });
-      // TextTemplate caption path → ListAgg4 name
-      edges.push({
-        id: generateId("e"),
-        source: captionPathId,
-        sourceHandle: "out",
-        target: agg4Id,
-        targetHandle: "name",
-      });
-
-      // 4x ListAgg → MergeNode (concat)
-      edges.push({
-        id: generateId("e"),
-        source: agg1Id,
-        sourceHandle: "list",
-        target: mergeId,
-        targetHandle: "in1",
-      });
-      edges.push({
-        id: generateId("e"),
-        source: agg2Id,
-        sourceHandle: "list",
-        target: mergeId,
-        targetHandle: "in2",
-      });
-      edges.push({
-        id: generateId("e"),
-        source: agg3Id,
-        sourceHandle: "list",
-        target: mergeId,
-        targetHandle: "in3",
-      });
-      edges.push({
-        id: generateId("e"),
-        source: agg4Id,
-        sourceHandle: "list",
-        target: mergeId,
-        targetHandle: "in4",
-      });
-
-      // MergeNode → DownloadData
-      edges.push({
-        id: generateId("e"),
-        source: mergeId,
-        sourceHandle: "out",
-        target: downloadId,
-        targetHandle: "in",
-      });
-
-      // Preview: original → OutputImage in1, fal.ai result → OutputImage in2
-      edges.push({
-        id: generateId("e"),
-        source: iterId,
-        sourceHandle: "item",
-        target: outImgId,
-        targetHandle: "in1",
-      });
-      edges.push({
-        id: generateId("e"),
-        source: macroNode.id,
-        sourceHandle: "image",
-        target: outImgId,
-        targetHandle: "in2",
-      });
-
-      return { nodes, edges };
-    },
+    create: () => createSyntheticDatasetWorkflow({ macroKey: "falai", imageInputHandle: "image_url", resultOutputHandle: "image" }),
   },
   {
     id: "wavespeed-synthetic-dataset",
     name: "Wavespeed — Synthetic Dataset",
     description:
-      "Synthetic dataset pipeline using Wavespeed seedream-v5.0-lite/edit: processes images first (resize, format, round-to-8), sends the processed target to the API (saving bandwidth), then resizes the API output to match target dimensions so control and target sizes are identical. Produces a ZIP with target/, control/, original/, and captions/ folders.",
+      "Synthetic dataset pipeline using Wavespeed: processes images, sends to API, resizes output to match. Produces a ZIP with target/, control/, original/, generated/, and captions/ folders.",
     category: "API Workflows",
-    tags: [
-      "wavespeed",
-      "image",
-      "editing",
-      "batch",
-      "dataset",
-      "zip",
-      "synthetic",
-    ],
+    tags: ["wavespeed", "image", "editing", "batch", "dataset", "zip", "synthetic"],
     defaultModel: "bytedance/seedream-v5.0-lite/edit",
-    create: () => {
-      const nodes: FlowNode[] = [];
-      const edges: Edge[] = [];
-
-      const cx = {
-        input: 0,
-        iter: 280,
-        proc1: 560,
-        names: 900,
-        paths: 1200,
-        macro: 1200,
-        convert: 1520,
-        proc2: 1520,
-        agg: 1860,
-        merge: 2200,
-        out: 2500,
-      };
-
-      // ── Left column: inputs ──
-      const folderId = generateId("n");
-      nodes.push({
-        id: folderId,
-        type: "folderInput",
-        position: { x: cx.input, y: 0 },
-        data: {},
-      });
-
-      const promptId = generateId("n");
-      nodes.push({
-        id: promptId,
-        type: "inputText",
-        position: { x: cx.input, y: 280 },
-        data: { value: "make it look like a painting", label: "Prompt" },
-      });
-
-      const captionId = generateId("n");
-      nodes.push({
-        id: captionId,
-        type: "inputText",
-        position: { x: cx.input, y: 480 },
-        data: { value: "a painting style image", label: "Caption" },
-      });
-
-      // ── BatchIterator ──
-      const iterId = generateId("n");
-      nodes.push({
-        id: iterId,
-        type: "batchIterator",
-        position: { x: cx.iter, y: 0 },
-        data: { batchSize: 1, delayMs: 0, manualStep: true },
-      });
-
-      // ── ImageProcess target (resize + format BEFORE sending to API) ──
-      const imgProcTargetId = generateId("n");
-      nodes.push({
-        id: imgProcTargetId,
-        type: "imageProcess",
-        position: { x: cx.proc1, y: 0 },
-        data: { outputFormat: "jpg", quality: 95, resolution: "2K" },
-      });
-
-      // ── Counter ──
-      const counterId = generateId("n");
-      nodes.push({
-        id: counterId,
-        type: "counterNode",
-        position: { x: cx.names, y: 0 },
-        data: { prefix: "", suffix: "", start: 1, step: 1 },
-      });
-
-      // ── Folder name inputs ──
-      const targetFolderNameId = generateId("n");
-      nodes.push({
-        id: targetFolderNameId,
-        type: "inputText",
-        position: { x: cx.names, y: 300 },
-        data: { value: "target", label: "Target Folder" },
-      });
-
-      const controlFolderNameId = generateId("n");
-      nodes.push({
-        id: controlFolderNameId,
-        type: "inputText",
-        position: { x: cx.names, y: 490 },
-        data: { value: "control", label: "Control Folder" },
-      });
-
-      const originalFolderNameId = generateId("n");
-      nodes.push({
-        id: originalFolderNameId,
-        type: "inputText",
-        position: { x: cx.names, y: 680 },
-        data: { value: "original", label: "Original Folder" },
-      });
-
-      const captionFolderNameId = generateId("n");
-      nodes.push({
-        id: captionFolderNameId,
-        type: "inputText",
-        position: { x: cx.names, y: 870 },
-        data: { value: "captions", label: "Captions Folder" },
-      });
-
-      // ── TextTemplate for paths ──
-      const targetPathId = generateId("n");
-      nodes.push({
-        id: targetPathId,
-        type: "textTemplate",
-        position: { x: cx.paths, y: 300 },
-        data: { template: "{{var1}}/{{var2}}.jpg", inputs: ["var1", "var2"] },
-      });
-
-      const controlPathId = generateId("n");
-      nodes.push({
-        id: controlPathId,
-        type: "textTemplate",
-        position: { x: cx.paths, y: 570 },
-        data: { template: "{{var1}}/{{var2}}.jpg", inputs: ["var1", "var2"] },
-      });
-
-      const originalPathId = generateId("n");
-      nodes.push({
-        id: originalPathId,
-        type: "textTemplate",
-        position: { x: cx.paths, y: 840 },
-        data: { template: "{{var1}}/{{var2}}.png", inputs: ["var1", "var2"] },
-      });
-
-      const captionPathId = generateId("n");
-      nodes.push({
-        id: captionPathId,
-        type: "textTemplate",
-        position: { x: cx.paths, y: 1110 },
-        data: { template: "{{var1}}/{{var2}}.txt", inputs: ["var1", "var2"] },
-      });
-
-      // ── Wavespeed Image Edit Macro ──
-      const macroResult = PREBUILT_MACROS.wavespeedImageEdit!.create(
-        { x: cx.macro, y: 0 },
-        null,
-      );
-      const macroNode = macroResult.nodes[0]!;
-      nodes.push(...macroResult.nodes);
-      edges.push(...macroResult.edges);
-
-      // ── Converter (Wavespeed URL → data URI) ──
-      const converterId = generateId("n");
-      nodes.push({
-        id: converterId,
-        type: "converter",
-        position: { x: cx.convert, y: 0 },
-        data: { outputFormat: "dataURI" },
-      });
-
-      // ── ImageProcess control (resize API output to match target size) ──
-      const imgProcControlId = generateId("n");
-      nodes.push({
-        id: imgProcControlId,
-        type: "imageProcess",
-        position: { x: cx.proc2, y: 220 },
-        data: { outputFormat: "jpg", quality: 95, resolution: "2K" },
-      });
-
-      // ── 4x ListAggregators ──
-      const agg1Id = generateId("n"); // target
-      nodes.push({
-        id: agg1Id,
-        type: "listAggregator",
-        position: { x: cx.agg, y: 100 },
-        data: {},
-      });
-
-      const agg2Id = generateId("n"); // control
-      nodes.push({
-        id: agg2Id,
-        type: "listAggregator",
-        position: { x: cx.agg, y: 440 },
-        data: {},
-      });
-
-      const agg3Id = generateId("n"); // original
-      nodes.push({
-        id: agg3Id,
-        type: "listAggregator",
-        position: { x: cx.agg, y: 780 },
-        data: {},
-      });
-
-      const agg4Id = generateId("n"); // captions
-      nodes.push({
-        id: agg4Id,
-        type: "listAggregator",
-        position: { x: cx.agg, y: 1120 },
-        data: {},
-      });
-
-      // ── MergeNode ──
-      const mergeId = generateId("n");
-      nodes.push({
-        id: mergeId,
-        type: "mergeNode",
-        position: { x: cx.merge, y: 640 },
-        data: { mode: "concat", inputs: ["in1", "in2", "in3", "in4"] },
-      });
-
-      // ── OutputImage (preview) ──
-      const outImgId = generateId("n");
-      nodes.push({
-        id: outImgId,
-        type: "outputImage",
-        position: { x: cx.out, y: -200 },
-        data: { _userWidth: 800, _userHeight: 800 },
-      });
-
-      // ── DownloadData (ZIP) ──
-      const downloadId = generateId("n");
-      nodes.push({
-        id: downloadId,
-        type: "downloadData",
-        position: { x: cx.out, y: 640 },
-        data: { format: "zip" },
-      });
-
-      // ═══ EDGES ═══
-
-      // FolderInput → BatchIterator
-      edges.push({
-        id: generateId("e"),
-        source: folderId,
-        sourceHandle: "images",
-        target: iterId,
-        targetHandle: "list",
-      });
-
-      // BatchIterator item → ImageProcess target (resize BEFORE API)
-      edges.push({
-        id: generateId("e"),
-        source: iterId,
-        sourceHandle: "item",
-        target: imgProcTargetId,
-        targetHandle: "image",
-      });
-
-      // BatchIterator → Counter trigger
-      edges.push({
-        id: generateId("e"),
-        source: iterId,
-        sourceHandle: "item",
-        target: counterId,
-        targetHandle: "trigger",
-      });
-
-      // Counter count → all 4 TextTemplate var2
-      edges.push({
-        id: generateId("e"),
-        source: counterId,
-        sourceHandle: "count",
-        target: targetPathId,
-        targetHandle: "var2",
-      });
-      edges.push({
-        id: generateId("e"),
-        source: counterId,
-        sourceHandle: "count",
-        target: controlPathId,
-        targetHandle: "var2",
-      });
-      edges.push({
-        id: generateId("e"),
-        source: counterId,
-        sourceHandle: "count",
-        target: originalPathId,
-        targetHandle: "var2",
-      });
-      edges.push({
-        id: generateId("e"),
-        source: counterId,
-        sourceHandle: "count",
-        target: captionPathId,
-        targetHandle: "var2",
-      });
-
-      // Folder name inputs → TextTemplate var1
-      edges.push({
-        id: generateId("e"),
-        source: targetFolderNameId,
-        sourceHandle: "out",
-        target: targetPathId,
-        targetHandle: "var1",
-      });
-      edges.push({
-        id: generateId("e"),
-        source: controlFolderNameId,
-        sourceHandle: "out",
-        target: controlPathId,
-        targetHandle: "var1",
-      });
-      edges.push({
-        id: generateId("e"),
-        source: originalFolderNameId,
-        sourceHandle: "out",
-        target: originalPathId,
-        targetHandle: "var1",
-      });
-      edges.push({
-        id: generateId("e"),
-        source: captionFolderNameId,
-        sourceHandle: "out",
-        target: captionPathId,
-        targetHandle: "var1",
-      });
-
-      // ImageProcess target → Wavespeed macro (send PROCESSED image to API)
-      edges.push({
-        id: generateId("e"),
-        source: imgProcTargetId,
-        sourceHandle: "out",
-        target: macroNode.id,
-        targetHandle: "image",
-      });
-      // Prompt → Wavespeed macro
-      edges.push({
-        id: generateId("e"),
-        source: promptId,
-        sourceHandle: "out",
-        target: macroNode.id,
-        targetHandle: "prompt",
-      });
-
-      // ImageProcess target out → ListAgg1 item (target folder)
-      edges.push({
-        id: generateId("e"),
-        source: imgProcTargetId,
-        sourceHandle: "out",
-        target: agg1Id,
-        targetHandle: "item",
-      });
-      // TextTemplate target path → ListAgg1 name
-      edges.push({
-        id: generateId("e"),
-        source: targetPathId,
-        sourceHandle: "out",
-        target: agg1Id,
-        targetHandle: "name",
-      });
-
-      // Wavespeed image → Converter (URL → data URI)
-      edges.push({
-        id: generateId("e"),
-        source: macroNode.id,
-        sourceHandle: "image",
-        target: converterId,
-        targetHandle: "in",
-      });
-
-      // Converter out → ImageProcess control image
-      edges.push({
-        id: generateId("e"),
-        source: converterId,
-        sourceHandle: "out",
-        target: imgProcControlId,
-        targetHandle: "image",
-      });
-
-      // ImageProcess target SIZE → ImageProcess control SIZE (match dimensions)
-      edges.push({
-        id: generateId("e"),
-        source: imgProcTargetId,
-        sourceHandle: "size",
-        target: imgProcControlId,
-        targetHandle: "size",
-      });
-
-      // ImageProcess control out → ListAgg2 item (control folder)
-      edges.push({
-        id: generateId("e"),
-        source: imgProcControlId,
-        sourceHandle: "out",
-        target: agg2Id,
-        targetHandle: "item",
-      });
-      // TextTemplate control path → ListAgg2 name
-      edges.push({
-        id: generateId("e"),
-        source: controlPathId,
-        sourceHandle: "out",
-        target: agg2Id,
-        targetHandle: "name",
-      });
-
-      // Converter out → ListAgg3 item (original folder — raw API output)
-      edges.push({
-        id: generateId("e"),
-        source: converterId,
-        sourceHandle: "out",
-        target: agg3Id,
-        targetHandle: "item",
-      });
-      // TextTemplate original path → ListAgg3 name
-      edges.push({
-        id: generateId("e"),
-        source: originalPathId,
-        sourceHandle: "out",
-        target: agg3Id,
-        targetHandle: "name",
-      });
-
-      // Caption text → ListAgg4 item
-      edges.push({
-        id: generateId("e"),
-        source: captionId,
-        sourceHandle: "out",
-        target: agg4Id,
-        targetHandle: "item",
-      });
-      // TextTemplate caption path → ListAgg4 name
-      edges.push({
-        id: generateId("e"),
-        source: captionPathId,
-        sourceHandle: "out",
-        target: agg4Id,
-        targetHandle: "name",
-      });
-
-      // 4x ListAgg → MergeNode (concat)
-      edges.push({
-        id: generateId("e"),
-        source: agg1Id,
-        sourceHandle: "list",
-        target: mergeId,
-        targetHandle: "in1",
-      });
-      edges.push({
-        id: generateId("e"),
-        source: agg2Id,
-        sourceHandle: "list",
-        target: mergeId,
-        targetHandle: "in2",
-      });
-      edges.push({
-        id: generateId("e"),
-        source: agg3Id,
-        sourceHandle: "list",
-        target: mergeId,
-        targetHandle: "in3",
-      });
-      edges.push({
-        id: generateId("e"),
-        source: agg4Id,
-        sourceHandle: "list",
-        target: mergeId,
-        targetHandle: "in4",
-      });
-
-      // MergeNode → DownloadData
-      edges.push({
-        id: generateId("e"),
-        source: mergeId,
-        sourceHandle: "out",
-        target: downloadId,
-        targetHandle: "in",
-      });
-
-      // Preview: target → OutputImage in1, Wavespeed result → OutputImage in2
-      edges.push({
-        id: generateId("e"),
-        source: imgProcTargetId,
-        sourceHandle: "out",
-        target: outImgId,
-        targetHandle: "in1",
-      });
-      edges.push({
-        id: generateId("e"),
-        source: macroNode.id,
-        sourceHandle: "image",
-        target: outImgId,
-        targetHandle: "in2",
-      });
-
-      return { nodes, edges };
-    },
+    create: () => createSyntheticDatasetWorkflow({ macroKey: "wavespeedImageEdit", imageInputHandle: "image", resultOutputHandle: "image" }),
+  },
+  {
+    id: "replicate-synthetic-dataset",
+    name: "Replicate — Synthetic Dataset",
+    description:
+      "Synthetic dataset pipeline using Replicate: processes images, sends to API with rate limiting, resizes output to match. Produces a ZIP with target/, control/, original/, generated/, and captions/ folders.",
+    category: "API Workflows",
+    tags: ["replicate", "image", "editing", "batch", "dataset", "zip", "synthetic"],
+    defaultModel: "bytedance/seedream-5-lite",
+    create: () => createSyntheticDatasetWorkflow({ macroKey: "replicate", imageInputHandle: "image", resultOutputHandle: "result", addDelay: 2000 }),
   },
   {
     id: "replicate-i2v-variations",
@@ -3295,19 +2471,19 @@ WORKFLOW_REGISTRY.push(
         target: macroNode.id,
         targetHandle: "image",
       });
-      // Replicate video → UniversalOutput
+      // Replicate result → UniversalOutput
       edges.push({
         id: generateId("e"),
         source: macroNode.id,
-        sourceHandle: "video",
+        sourceHandle: "result",
         target: uniOutId,
         targetHandle: "data",
       });
-      // Replicate video → ListAggregator
+      // Replicate result → ListAggregator
       edges.push({
         id: generateId("e"),
         source: macroNode.id,
-        sourceHandle: "video",
+        sourceHandle: "result",
         target: aggId,
         targetHandle: "item",
       });
@@ -3490,7 +2666,7 @@ WORKFLOW_REGISTRY.push(
     name: "Prompt Chaining with Template",
     description:
       "Use Text Template to build a structured prompt from multiple inputs, then generate text. Demonstrates the Text Template and String Ops nodes.",
-    category: "New Node Demos",
+    category: "Examples",
     tags: ["template", "prompt", "text-generation", "string-ops"],
     defaultModel: "Xenova/flan-t5-small",
     create: () => {
@@ -3628,7 +2804,7 @@ WORKFLOW_REGISTRY.push(
     name: "Conditional Routing with Switch",
     description:
       "Classify text sentiment, then use Switch node to route positive and negative results to different outputs. Demonstrates the Switch node.",
-    category: "New Node Demos",
+    category: "Examples",
     tags: ["switch", "conditional", "routing", "classification"],
     defaultModel: "Xenova/distilbert-base-uncased-finetuned-sst-2-english",
     create: () => {
@@ -3748,7 +2924,7 @@ WORKFLOW_REGISTRY.push(
     name: "Merge Multiple Inputs",
     description:
       "Combine multiple text inputs into a single object using the Merge node, then display as JSON. Demonstrates the Merge node.",
-    category: "New Node Demos",
+    category: "Examples",
     tags: ["merge", "combine", "object", "json"],
     defaultModel: "",
     create: () => {
@@ -3835,7 +3011,7 @@ WORKFLOW_REGISTRY.push(
     name: "Batch with Counter Naming",
     description:
       "Iterate over items with auto-incrementing filenames using the Counter node. Demonstrates Counter + Batch Iterator + Download.",
-    category: "New Node Demos",
+    category: "Examples",
     tags: ["counter", "batch", "naming", "download"],
     defaultModel: "Xenova/vit-gpt2-image-captioning",
     create: () => {
@@ -3945,7 +3121,7 @@ WORKFLOW_REGISTRY.push(
     name: "String Processing Pipeline",
     description:
       "Chain multiple String Ops nodes to extract, transform, and format text data. Demonstrates split, regex extract, and join operations.",
-    category: "New Node Demos",
+    category: "Examples",
     tags: ["string", "text", "split", "regex", "transform"],
     defaultModel: "",
     create: () => {

@@ -142,7 +142,31 @@ export function getNodeMenuItems(currentView: string | null): MenuItem[] {
     type: "openRouter",
     label: "OpenRouter API",
     category: "Pipelines",
-    subcategory: "LLM",
+    subcategory: "API",
+  });
+  items.push({
+    type: "falai",
+    label: "fal.ai",
+    category: "Pipelines",
+    subcategory: "API",
+  });
+  items.push({
+    type: "wavespeedImageEdit",
+    label: "Wavespeed",
+    category: "Pipelines",
+    subcategory: "API",
+  });
+  items.push({
+    type: "wavespeed",
+    label: "Wavespeed Head Swap",
+    category: "Pipelines",
+    subcategory: "API",
+  });
+  items.push({
+    type: "replicate",
+    label: "Replicate",
+    category: "Pipelines",
+    subcategory: "API",
   });
   for (const [cat, tasks] of Object.entries(PIPELINE_CATEGORIES)) {
     for (const task of tasks) {

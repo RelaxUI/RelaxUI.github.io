@@ -2,9 +2,47 @@ import { LabeledHandle } from "@/components/LabeledHandle.tsx";
 import { NodeErrorBoundary } from "@/components/NodeErrorBoundary.tsx";
 import { NODE_DIMENSIONS } from "@/config/nodeDimensions.ts";
 import { RuntimeContext } from "@/context/RuntimeContext.ts";
+import { useSettings, type HandleLayout } from "@/hooks/useSettings.ts";
 import { getNodeHandles } from "@/nodes/registry.ts";
+import type { HandleDef } from "@/types.ts";
 import { NodeToolbar, Position, useViewport } from "@xyflow/react";
 import { useCallback, useContext, useRef } from "react";
+
+const HEADER_H = 32; // h-8 header
+const HANDLE_GAP = 28;
+const HANDLE_TOP_PAD = 14;
+
+function distributeHandles(
+  handles: HandleDef[],
+  nodeH: number,
+  layout: HandleLayout,
+): HandleDef[] {
+  const n = handles.length;
+  if (n === 0) return handles;
+  if (layout === "compact") {
+    return handles.map((h, i) => ({
+      ...h,
+      offsetY: HEADER_H + HANDLE_TOP_PAD + i * HANDLE_GAP,
+    }));
+  }
+  const usable = nodeH - HEADER_H;
+  if (layout === "space-between") {
+    if (n === 1) {
+      return [{ ...handles[0]!, offsetY: HEADER_H + usable / 2 }];
+    }
+    const step = usable / (n + 1);
+    return handles.map((h, i) => ({
+      ...h,
+      offsetY: HEADER_H + step * (i + 1),
+    }));
+  }
+  // space-around
+  const step = usable / n;
+  return handles.map((h, i) => ({
+    ...h,
+    offsetY: HEADER_H + step * i + step / 2,
+  }));
+}
 
 interface BaseNodeProps {
   id: string;
@@ -39,8 +77,9 @@ export const BaseNode = ({
   const isZoomedOut = zoom < 0.8;
   const dims = NODE_DIMENSIONS[type] ?? { w: 220, h: 140, title: type?.toUpperCase() ?? "NODE", sub: "" };
   const node = { id, type, data };
-  const handles = getNodeHandles(node as any, globalNodes);
-
+  const rawHandles = getNodeHandles(node as any, globalNodes);
+  const { settings } = useSettings();
+  const layout = settings.handleLayout || "compact";
   const isComputing =
     computingNodes.has(id) ||
     (type === "macroNode" &&
@@ -66,6 +105,11 @@ export const BaseNode = ({
   // User-defined dimensions override defaults
   const effectiveW = data._userWidth || dims.w;
   const effectiveH = data._userHeight || dynamicHeight;
+
+  const handles = {
+    targets: distributeHandles(rawHandles.targets, effectiveH, layout),
+    sources: distributeHandles(rawHandles.sources, effectiveH, layout),
+  };
 
   // Custom resize handle via pointer drag (avoids conflict with ReactFlow node drag)
   const nodeRef = useRef<HTMLDivElement>(null);

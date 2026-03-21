@@ -9,53 +9,123 @@
   --relax-text-muted: #5a6b7c;
   --relax-text-default: #a0aec0;
   --relax-text-bright: #ffffff;
-  --relax-accent: #00e5ff;
+  --relax-accent: #00ff78;
   --relax-accent-dim: rgba(0, 229, 255, 0.15);
   --relax-success: #00ffaa;
   --relax-error: #ef4444;
   --relax-accent-dark: #011a1f;
-  --relax-accent-gradient: linear-gradient(to top right, #00e5ff, #007acc);
+  --relax-accent-gradient: linear-gradient(to top right, #00ff78, #007acc);
 }
 
 /* ── Typography ── */
-.font-sans { font-family: 'Inter', sans-serif; }
-.font-mono { font-family: 'JetBrains Mono', monospace; }
+.font-sans {
+  font-family: "Inter", sans-serif;
+}
+.font-mono {
+  font-family: "JetBrains Mono", monospace;
+}
 
 /* ── Custom scrollbar ── */
-.custom-scrollbar::-webkit-scrollbar { width: 6px; height: 6px; }
-.custom-scrollbar::-webkit-scrollbar-track { background: transparent; }
-.custom-scrollbar::-webkit-scrollbar-thumb { background: var(--relax-border-hover); border-radius: 3px; }
-.custom-scrollbar::-webkit-scrollbar-thumb:hover { background: var(--relax-border-active); }
+.custom-scrollbar::-webkit-scrollbar {
+  width: 6px;
+  height: 6px;
+}
+.custom-scrollbar::-webkit-scrollbar-track {
+  background: transparent;
+}
+.custom-scrollbar::-webkit-scrollbar-thumb {
+  background: var(--relax-border-hover);
+  border-radius: 3px;
+}
+.custom-scrollbar::-webkit-scrollbar-thumb:hover {
+  background: var(--relax-border-active);
+}
 
 /* ── Node animations ── */
 @keyframes borderPulse {
-  0% { border-color: rgba(0, 255, 170, 0.4); box-shadow: 0 0 15px rgba(0, 255, 170, 0.2); }
-  50% { border-color: rgba(0, 255, 170, 1); box-shadow: 0 0 30px rgba(0, 255, 170, 0.5); }
-  100% { border-color: rgba(0, 255, 170, 0.4); box-shadow: 0 0 15px rgba(0, 255, 170, 0.2); }
+  0% {
+    border-color: rgba(0, 255, 170, 0.4);
+    box-shadow: 0 0 15px rgba(0, 255, 170, 0.2);
+  }
+  50% {
+    border-color: rgba(0, 255, 170, 1);
+    box-shadow: 0 0 30px rgba(0, 255, 170, 0.5);
+  }
+  100% {
+    border-color: rgba(0, 255, 170, 0.4);
+    box-shadow: 0 0 15px rgba(0, 255, 170, 0.2);
+  }
 }
-.computing-node { animation: borderPulse 1.5s infinite; border-color: var(--relax-accent) !important; }
+.computing-node {
+  animation: borderPulse 1.5s infinite;
+  border-color: var(--relax-accent) !important;
+}
 
 @keyframes borderPulseError {
-  0% { border-color: rgba(239, 68, 68, 0.4); box-shadow: 0 0 15px rgba(239, 68, 68, 0.2); }
-  50% { border-color: rgba(239, 68, 68, 1); box-shadow: 0 0 30px rgba(239, 68, 68, 0.5); }
-  100% { border-color: rgba(239, 68, 68, 0.4); box-shadow: 0 0 15px rgba(239, 68, 68, 0.2); }
+  0% {
+    border-color: rgba(239, 68, 68, 0.4);
+    box-shadow: 0 0 15px rgba(239, 68, 68, 0.2);
+  }
+  50% {
+    border-color: rgba(239, 68, 68, 1);
+    box-shadow: 0 0 30px rgba(239, 68, 68, 0.5);
+  }
+  100% {
+    border-color: rgba(239, 68, 68, 0.4);
+    box-shadow: 0 0 15px rgba(239, 68, 68, 0.2);
+  }
 }
-.computing-node-error { animation: borderPulseError 1.5s infinite; border-color: rgb(239, 68, 68) !important; }
+.computing-node-error {
+  animation: borderPulseError 1.5s infinite;
+  border-color: rgb(239, 68, 68) !important;
+}
 
 /* ── Edge animation ── */
-@keyframes dashMove { from { stroke-dashoffset: 24; } to { stroke-dashoffset: 0; } }
-.edge-dashed-animate { stroke-dasharray: 12 12; animation: dashMove 0.5s linear infinite; }
+@keyframes dashMove {
+  from {
+    stroke-dashoffset: 24;
+  }
+  to {
+    stroke-dashoffset: 0;
+  }
+}
+.edge-dashed-animate {
+  stroke-dasharray: 12 12;
+  animation: dashMove 0.5s linear infinite;
+}
 
 /* ── Audio orb animation ── */
 @keyframes orbPulse {
-  0%, 100% { transform: scale(1); opacity: 0.7; }
-  50% { transform: scale(1.08); opacity: 1; }
+  0%,
+  100% {
+    transform: scale(1);
+    opacity: 0.7;
+  }
+  50% {
+    transform: scale(1.08);
+    opacity: 1;
+  }
 }
 
 /* ── ReactFlow overrides ── */
-.react-flow__node { cursor: default; }
-.react-flow__attribution { display: none; }
-.custom-drag-handle { cursor: grab; }
-.custom-drag-handle:active { cursor: grabbing; }
-.custom-handle { width: 12px !important; height: 12px !important; transition: all 0.2s ease; }
-.custom-handle:hover { width: 18px !important; height: 18px !important; }
+.react-flow__node {
+  cursor: default;
+}
+.react-flow__attribution {
+  display: none;
+}
+.custom-drag-handle {
+  cursor: grab;
+}
+.custom-drag-handle:active {
+  cursor: grabbing;
+}
+.custom-handle {
+  width: 12px !important;
+  height: 12px !important;
+  transition: all 0.2s ease;
+}
+.custom-handle:hover {
+  width: 18px !important;
+  height: 18px !important;
+}

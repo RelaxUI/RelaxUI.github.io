@@ -10,6 +10,7 @@ import { useCallback, useEffect, useMemo, useState } from "react";
 import { ContextMenu } from "@/components/ContextMenu/ContextMenu.tsx";
 import { FullscreenModal } from "@/components/FullscreenModal.tsx";
 import { ImportDialog } from "@/components/ImportDialog.tsx";
+import { SaveWorkflowDialog } from "@/components/SaveWorkflowDialog.tsx";
 import { InfoModal } from "@/components/InfoModal.tsx";
 import { NodePickerPanel } from "@/components/NodePickerPanel.tsx";
 import { SettingsDialog } from "@/components/SettingsDialog.tsx";
@@ -31,7 +32,6 @@ export function FlowEditor() {
   const flow = useFlowState();
   const runner = useGraphRunner();
   const { settings } = useSettings();
-
   // ResizeObserver loop error suppression is handled by an early <script> in
   // index.html (before Bun's dev console proxy captures it).
 
@@ -46,6 +46,7 @@ export function FlowEditor() {
   const [showMiniMap, setShowMiniMap] = useState(false);
   const [settingsOpen, setSettingsOpen] = useState(false);
   const [nodePickerOpen, setNodePickerOpen] = useState(false);
+  const [saveDialogOpen, setSaveDialogOpen] = useState(false);
   const [validationIssues, setValidationIssues] = useState<
     ValidationIssue[] | null
   >(null);
@@ -181,7 +182,14 @@ export function FlowEditor() {
   const clearWorkflow = useCallback(() => {
     flow.setNodes([]);
     flow.setEdges([]);
-    localStorage.setItem("relaxui_autosave_v1", JSON.stringify({ nodes: [], edges: [], viewport: { x: 0, y: 0, zoom: 1 } }));
+    localStorage.setItem(
+      "relaxui_autosave_v1",
+      JSON.stringify({
+        nodes: [],
+        edges: [],
+        viewport: { x: 0, y: 0, zoom: 1 },
+      }),
+    );
   }, [flow]);
 
   return (
@@ -212,12 +220,25 @@ export function FlowEditor() {
           stopNode: runner.stopNode,
         }),
         [
-          flow.nodes, flow.edges, hoveredEdgeId, flow.updateNodeData,
-          flow.removeEdgeByHandle, runner.displayData, runner.computingNodes,
-          runner.nodeErrors, runner.activeEdges, flow.deleteNode,
-          flow.setCurrentView, runner.modelLoadingState, runner.executionTimes,
-          runner.clearDisplayData, runner.resolveApproval, runner.rejectApproval,
-          runner.pauseNode, runner.resumeNode, runner.stopNode,
+          flow.nodes,
+          flow.edges,
+          hoveredEdgeId,
+          flow.updateNodeData,
+          flow.removeEdgeByHandle,
+          runner.displayData,
+          runner.computingNodes,
+          runner.nodeErrors,
+          runner.activeEdges,
+          flow.deleteNode,
+          flow.setCurrentView,
+          runner.modelLoadingState,
+          runner.executionTimes,
+          runner.clearDisplayData,
+          runner.resolveApproval,
+          runner.rejectApproval,
+          runner.pauseNode,
+          runner.resumeNode,
+          runner.stopNode,
         ],
       )}
     >
@@ -239,6 +260,7 @@ export function FlowEditor() {
           openSettings={() => setSettingsOpen(true)}
           openNodePicker={() => setNodePickerOpen(true)}
           validateWorkflow={handleValidate}
+          saveWorkflow={() => setSaveDialogOpen(true)}
         />
 
         {/* REACT FLOW CANVAS */}
@@ -274,9 +296,9 @@ export function FlowEditor() {
               <MiniMap
                 nodeColor={(n) =>
                   runner.computingNodes.has(n.id)
-                    ? "#00e5ff"
+                    ? "#00ff78"
                     : n.type === "macroNode"
-                      ? "#00e5ff"
+                      ? "#00ff78"
                       : "#3f4b59"
                 }
                 maskColor="rgba(0, 0, 0, 0.7)"
@@ -315,6 +337,15 @@ export function FlowEditor() {
           <ImportDialog
             onImport={handleImportFlow}
             onClose={() => setImportDialogOpen(false)}
+            onDeleteSavedWorkflow={flow.deleteSavedWorkflow}
+          />
+        )}
+
+        {/* SAVE WORKFLOW DIALOG */}
+        {saveDialogOpen && (
+          <SaveWorkflowDialog
+            onSave={flow.saveWorkflowToRegistry}
+            onClose={() => setSaveDialogOpen(false)}
           />
         )}
 

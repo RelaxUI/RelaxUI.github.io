@@ -5,12 +5,15 @@ import {
 import { ModelRegistry } from "@/utils/modelRegistry.ts";
 import { useCallback, useEffect, useRef, useState } from "react";
 
+const SAVED_WORKFLOWS_KEY = "relaxui_saved_workflows_v1";
+
 interface ImportDialogProps {
   onImport: (flow: { nodes: any[]; edges: any[]; viewport?: any }) => void;
   onClose: () => void;
+  onDeleteSavedWorkflow?: (id: string) => void;
 }
 
-export function ImportDialog({ onImport, onClose }: ImportDialogProps) {
+export function ImportDialog({ onImport, onClose, onDeleteSavedWorkflow }: ImportDialogProps) {
   const [tab, setTab] = useState<"file" | "url" | "registry">("registry");
   const [url, setUrl] = useState("");
   const [loading, setLoading] = useState(false);
@@ -20,6 +23,13 @@ export function ImportDialog({ onImport, onClose }: ImportDialogProps) {
   const [modelSizes, setModelSizes] = useState<Record<string, number | null>>(
     {},
   );
+  const [savedWorkflows, setSavedWorkflows] = useState<any[]>(() => {
+    try {
+      return JSON.parse(localStorage.getItem(SAVED_WORKFLOWS_KEY) || "[]");
+    } catch {
+      return [];
+    }
+  });
 
   useEffect(() => {
     if (tab !== "registry") return;
@@ -94,23 +104,61 @@ export function ImportDialog({ onImport, onClose }: ImportDialogProps) {
         : "text-(--relax-text-muted) hover:text-white"
     }`;
 
-  const filteredCategories = search.trim()
-    ? Object.fromEntries(
-        Object.entries(REGISTRY_CATEGORIES)
-          .map(([cat, wfs]) => [
-            cat,
-            wfs.filter(
-              (wf) =>
-                wf.name.toLowerCase().includes(search.toLowerCase()) ||
-                wf.description.toLowerCase().includes(search.toLowerCase()) ||
-                wf.tags.some((t) =>
-                  t.toLowerCase().includes(search.toLowerCase()),
-                ),
-            ),
-          ])
-          .filter(([, wfs]) => (wfs as RegistryWorkflow[]).length > 0),
-      )
-    : REGISTRY_CATEGORIES;
+  const handleDeleteSaved = useCallback((id: string) => {
+    if (onDeleteSavedWorkflow) onDeleteSavedWorkflow(id);
+    setSavedWorkflows((prev) => prev.filter((w) => w.id !== id));
+  }, [onDeleteSavedWorkflow]);
+
+  const filteredCategories = (() => {
+    const registry: Record<string, RegistryWorkflow[]> = search.trim()
+      ? Object.fromEntries(
+          Object.entries(REGISTRY_CATEGORIES)
+            .map(([cat, wfs]) => [
+              cat,
+              wfs.filter(
+                (wf) =>
+                  wf.name.toLowerCase().includes(search.toLowerCase()) ||
+                  wf.description.toLowerCase().includes(search.toLowerCase()) ||
+                  wf.tags.some((t) =>
+                    t.toLowerCase().includes(search.toLowerCase()),
+                  ),
+              ),
+            ])
+            .filter(([, wfs]) => (wfs as RegistryWorkflow[]).length > 0),
+        )
+      : { ...REGISTRY_CATEGORIES };
+
+    // Build result with Saved Workflows first
+    const result: Record<string, RegistryWorkflow[]> = {};
+
+    if (savedWorkflows.length > 0) {
+      const savedAsRegistry: RegistryWorkflow[] = savedWorkflows
+        .filter((sw) => {
+          if (!search.trim()) return true;
+          const s = search.toLowerCase();
+          return sw.name.toLowerCase().includes(s) || (sw.description || "").toLowerCase().includes(s);
+        })
+        .map((sw) => ({
+          id: sw.id,
+          name: sw.name,
+          description: sw.description || "",
+          category: "Saved Workflows",
+          tags: sw.tags || ["saved"],
+          defaultModel: "",
+          create: () => sw.flow,
+        }));
+      if (savedAsRegistry.length > 0) {
+        result["Saved Workflows"] = savedAsRegistry;
+      }
+    }
+
+    // Append all registry categories after
+    for (const [cat, wfs] of Object.entries(registry)) {
+      result[cat] = wfs;
+    }
+
+    return result;
+  })();
 
   return (
     <div
@@ -238,12 +286,14 @@ export function ImportDialog({ onImport, onClose }: ImportDialogProps) {
                     </div>
                     <div className="grid gap-2">
                       {(workflows as RegistryWorkflow[]).map((wf) => (
-                        <button
+                        <div
                           key={wf.id}
-                          onClick={() => handleRegistrySelect(wf)}
                           className="group flex items-start gap-3 p-3 bg-(--relax-bg-elevated) border border-(--relax-border) rounded-lg hover:border-(--relax-accent)/50 hover:bg-(--relax-border)/30 transition-all text-left"
                         >
-                          <div className="flex-1 min-w-0">
+                          <div
+                            className="flex-1 min-w-0 cursor-pointer"
+                            onClick={() => handleRegistrySelect(wf)}
+                          >
                             <div className="flex items-center gap-2 flex-wrap">
                               <span className="text-white font-bold text-xs group-hover:text-(--relax-accent) transition-colors">
                                 {wf.name}
@@ -286,10 +336,23 @@ export function ImportDialog({ onImport, onClose }: ImportDialogProps) {
                               ))}
                             </div>
                           </div>
-                          <span className="text-(--relax-border-hover) group-hover:text-(--relax-accent) transition-colors text-sm mt-1 font-mono shrink-0">
-                            LOAD
-                          </span>
-                        </button>
+                          <div className="flex flex-col items-end gap-1 shrink-0">
+                            <button
+                              onClick={() => handleRegistrySelect(wf)}
+                              className="text-(--relax-border-hover) group-hover:text-(--relax-accent) transition-colors text-sm mt-1 font-mono cursor-pointer"
+                            >
+                              LOAD
+                            </button>
+                            {category === "Saved Workflows" && (
+                              <button
+                                onClick={() => handleDeleteSaved(wf.id)}
+                                className="text-(--relax-error) hover:text-red-300 text-[9px] font-bold tracking-wider transition-colors cursor-pointer"
+                              >
+                                DELETE
+                              </button>
+                            )}
+                          </div>
+                        </div>
                       ))}
                     </div>
                   </div>

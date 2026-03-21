@@ -7,7 +7,7 @@ import {
   type BrowserCacheStats,
 } from "@/engine/transformersExecutor.ts";
 import { useMemory, type MemoryItem } from "@/hooks/useMemory.ts";
-import { useSettings } from "@/hooks/useSettings.ts";
+import { DEFAULT_THEME, useSettings, type HandleLayout, type ThemeColors } from "@/hooks/useSettings.ts";
 import {
   useCallback,
   useContext,
@@ -38,6 +38,7 @@ export const SettingsDialog = ({ onClose }: SettingsDialogProps) => {
     estimatedBytes: 0,
   });
   const [clearing, setClearing] = useState(false);
+  const [showReloadPrompt, setShowReloadPrompt] = useState(false);
 
   const refreshCacheStats = useCallback(() => {
     setCacheStats(getModelCacheStats());
@@ -112,21 +113,23 @@ export const SettingsDialog = ({ onClose }: SettingsDialogProps) => {
           <section>
             <h3 className={sectionHeadingClass}>Hugging Face</h3>
             <label className={labelClass}>Access Token</label>
-            <div className="flex gap-2">
+            <form className="flex gap-2" onSubmit={(e) => e.preventDefault()} autoComplete="off">
               <input
                 type={showToken ? "text" : "password"}
                 value={settings.hfToken}
                 onChange={(e) => updateSetting("hfToken", e.target.value)}
                 placeholder="hf_..."
                 className={`flex-1 ${inputClass}`}
+                autoComplete="off"
               />
               <button
+                type="button"
                 onClick={() => setShowToken((v) => !v)}
                 className="px-2 py-1 text-[9px] font-bold bg-(--relax-border) border border-(--relax-border-hover) rounded text-(--relax-text-default) hover:text-white transition-colors"
               >
                 {showToken ? "HIDE" : "SHOW"}
               </button>
-            </div>
+            </form>
             <p className="text-[9px] text-(--relax-text-muted) mt-1.5">
               Required for gated models (e.g. Llama, RMBG). Get one at
               huggingface.co/settings/tokens
@@ -239,6 +242,71 @@ export const SettingsDialog = ({ onClose }: SettingsDialogProps) => {
                 </p>
               </div>
             </div>
+          </section>
+
+          {/* Handle Layout */}
+          <section>
+            <h3 className={sectionHeadingClass}>Handle Layout</h3>
+            <div className="flex gap-3">
+              {(
+                [
+                  ["compact", "Compact"],
+                  ["space-between", "Space Between"],
+                  ["space-around", "Space Around"],
+                ] as const
+              ).map(([value, label]) => {
+                const isActive = (settings.handleLayout || "compact") === value;
+                return (
+                  <button
+                    key={value}
+                    onClick={() => {
+                      updateSetting("handleLayout", value as HandleLayout);
+                      setShowReloadPrompt(true);
+                    }}
+                    className={`flex-1 flex flex-col items-center gap-2 p-3 rounded-lg border transition-all ${
+                      isActive
+                        ? "border-(--relax-accent) bg-(--relax-accent)/10"
+                        : "border-(--relax-border) bg-(--relax-bg-primary) hover:border-(--relax-border-hover)"
+                    }`}
+                  >
+                    {/* Visual preview - mini node with handles */}
+                    <div className="relative w-12 h-16 border border-(--relax-border-hover) rounded bg-(--relax-bg-elevated)">
+                      <div className="w-full h-2 bg-(--relax-bg-primary)/50 rounded-t border-b border-(--relax-border)" />
+                      {[0, 1, 2].map((i) => {
+                        const nodeH = 64;
+                        const headerH = 8;
+                        const usable = nodeH - headerH;
+                        let top: number;
+                        if (value === "compact") {
+                          top = headerH + 6 + i * 10;
+                        } else if (value === "space-between") {
+                          const step = usable / 4;
+                          top = headerH + step * (i + 1);
+                        } else {
+                          const step = usable / 3;
+                          top = headerH + step * i + step / 2;
+                        }
+                        return (
+                          <div key={i} className="absolute flex items-center w-full" style={{ top }}>
+                            <div className="w-2 h-2 rounded-full bg-(--relax-accent) -ml-1 shadow-[0_0_4px_var(--relax-accent)]" />
+                            <div className="flex-1" />
+                            <div className="w-2 h-2 rounded-full bg-(--relax-accent) -mr-1 shadow-[0_0_4px_var(--relax-accent)]" />
+                          </div>
+                        );
+                      })}
+                    </div>
+                    <span className={`text-[9px] font-bold tracking-wider uppercase ${
+                      isActive ? "text-(--relax-accent)" : "text-(--relax-text-muted)"
+                    }`}>
+                      {label}
+                    </span>
+                  </button>
+                );
+              })}
+            </div>
+            <p className="text-[9px] text-(--relax-text-muted) mt-2">
+              How edge connection handles are positioned on nodes. Compact places handles near the top; space-between and space-around distribute them across the full node height.
+            </p>
           </section>
 
           {/* Model Cache */}
@@ -365,6 +433,49 @@ export const SettingsDialog = ({ onClose }: SettingsDialogProps) => {
               </p>
             </section>
           )}
+
+          {/* Theme Colors */}
+          <section>
+            <h3 className={sectionHeadingClass}>Interface Colors</h3>
+            <div className="grid grid-cols-2 gap-3">
+              {(
+                [
+                  ["bgPrimary", "Background"],
+                  ["bgElevated", "Surface"],
+                  ["border", "Border"],
+                  ["borderHover", "Border Hover"],
+                  ["accent", "Accent"],
+                  ["accentGradientEnd", "Accent Gradient End"],
+                ] as const
+              ).map(([key, label]) => (
+                <div key={key} className="flex items-center gap-2">
+                  <input
+                    type="color"
+                    value={(settings.themeColors ?? DEFAULT_THEME)[key]}
+                    onChange={(e) =>
+                      updateSetting("themeColors", {
+                        ...(settings.themeColors ?? DEFAULT_THEME),
+                        [key]: e.target.value,
+                      })
+                    }
+                    className="w-8 h-8 rounded border border-(--relax-border) cursor-pointer bg-transparent p-0 [&::-webkit-color-swatch-wrapper]:p-0.5 [&::-webkit-color-swatch]:rounded"
+                  />
+                  <span className="text-[10px] text-(--relax-text-default) font-bold tracking-wider uppercase">
+                    {label}
+                  </span>
+                </div>
+              ))}
+            </div>
+            <button
+              onClick={() => updateSetting("themeColors", { ...DEFAULT_THEME })}
+              className="mt-3 px-3 py-1.5 text-[9px] font-bold bg-(--relax-border) border border-(--relax-border-hover) rounded text-(--relax-text-default) hover:text-white transition-colors"
+            >
+              RESET TO DEFAULTS
+            </button>
+            <p className="text-[9px] text-(--relax-text-muted) mt-2">
+              Customize the interface colors. Changes apply immediately.
+            </p>
+          </section>
 
           {/* Memory */}
           <section>
@@ -507,6 +618,34 @@ export const SettingsDialog = ({ onClose }: SettingsDialogProps) => {
           </section>
         </div>
       </div>
+
+      {/* Reload prompt */}
+      {showReloadPrompt && (
+        <div className="fixed inset-0 z-120 bg-black/60 backdrop-blur-sm flex items-center justify-center p-4">
+          <div className="bg-(--relax-bg-elevated) border border-(--relax-border-hover) rounded-xl shadow-2xl w-full max-w-80 p-6 flex flex-col gap-4">
+            <h3 className="text-white text-sm font-bold tracking-widest">
+              RELOAD REQUIRED
+            </h3>
+            <p className="text-xs text-(--relax-text-default) leading-relaxed">
+              Handle layout has been saved. A page reload is needed to correctly reposition the edges.
+            </p>
+            <div className="flex gap-3 justify-end">
+              <button
+                onClick={() => setShowReloadPrompt(false)}
+                className="px-4 py-2 text-[10px] font-bold tracking-wider text-(--relax-text-muted) hover:text-white transition-colors"
+              >
+                LATER
+              </button>
+              <button
+                onClick={() => window.location.reload()}
+                className="px-4 py-2 text-[10px] font-bold tracking-wider bg-(--relax-accent) text-(--relax-bg-primary) rounded-lg hover:opacity-90 transition-opacity"
+              >
+                RELOAD NOW
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
     </div>
   );
 };
