@@ -27,12 +27,12 @@ src/
 │   ├── defaults.ts                 Centralized runtime constants
 │   ├── nodeDimensions.ts           Node size and title definitions
 │   ├── nodeInfo.ts                 Node descriptions and I/O specs
-│   ├── pipelineRegistry.ts         22 pipeline task definitions
+│   ├── pipelineRegistry.ts         25 pipeline task definitions
 │   ├── modelClassRegistry.ts       19 model class definitions
 │   ├── generationDefaults.ts       Generation parameter schema
-│   └── workflowRegistry.ts         54 ready-made workflow definitions
+│   └── workflowRegistry.ts         64 ready-made workflow definitions
 ├── engine/
-│   ├── GraphRunner.ts              Topological graph execution with streaming
+│   ├── GraphRunner.ts              Push-based graph execution with streaming
 │   ├── nodeExecutors.ts            Per-type executor dispatch
 │   └── transformersExecutor.ts     Transformers.js integration
 ├── context/
@@ -43,7 +43,8 @@ src/
 │   ├── useSettings.ts              Persistent settings via localStorage
 │   ├── useUndoRedo.ts              History stack with configurable depth
 │   ├── useCopyPaste.ts             Node copy/paste with macro support
-│   └── useKeyboardShortcuts.ts     Global keyboard handler
+│   ├── useKeyboardShortcuts.ts     Global keyboard handler
+│   └── useMemory.ts                Workflow memory/state persistence
 ├── components/
 │   ├── FlowEditor.tsx              Main orchestrator (hooks + canvas + modals)
 │   ├── TopBar.tsx                  Header with breadcrumbs, file menu, actions
@@ -60,24 +61,28 @@ src/
 │   ├── ModelLoadingIndicator.tsx   Model download progress
 │   ├── ModelSizeBadge.tsx          Color-coded model size badge
 │   ├── DynamicParamEditor.tsx      Auto-generated parameter controls
+│   ├── MemoryPicker.tsx            Memory/state picker UI
+│   ├── NodeErrorBoundary.tsx       React error boundary for nodes
 │   └── visualizations/            Rich output renderers (auto-detected)
 ├── nodes/
 │   ├── BaseNode.tsx                Shared node chrome (header, resize, timing)
 │   ├── registry.ts                 Node type and edge type registries
-│   ├── core/                       20 core node types
-│   └── transformers/               13 Transformers.js node types
+│   ├── core/                       27 core node components
+│   └── transformers/               13 Transformers.js node components
 ├── macros/
 │   ├── macroFactory.ts             Unified PREBUILT_MACROS export
-│   ├── pipelineMacroFactory.ts     Auto-generates 22 pipeline macros
+│   ├── pipelineMacroFactory.ts     Auto-generates 25 pipeline macros
 │   ├── modelClassMacroFactory.ts   Auto-generates 19 model class macros
 │   ├── openRouter.ts              OpenRouter API macro
 │   ├── falai.ts                   fal.ai API macro
 │   ├── replicate.ts               Replicate API macro
-│   └── wavespeed.ts               Wavespeed API macro
+│   └── wavespeed.ts               Wavespeed API macros (head swap + image edit)
 └── utils/
     ├── generateId.ts               Unique ID generator (base32)
     ├── modelRegistry.ts            HuggingFace model size estimator + cache
     ├── nodeMenuItems.ts            Categorized node menu builder
+    ├── dataUrl.ts                  Shared blob/URL → data URL conversion
+    ├── validateWorkflow.ts         Workflow validation utilities
     └── blobNames.ts                Blob URL name utilities
 ```
 
@@ -85,13 +90,16 @@ src/
 
 ### Execution Engine
 
-The `GraphRunner` executes workflows as a directed acyclic graph:
+The `GraphRunner` executes workflows using a push-based data flow model:
 
 1. Scans edges to determine each node's expected inputs
-2. Queues source nodes (no incoming edges)
-3. Executes nodes via type-specific executors, pushing values through edges
-4. Supports streaming (immediate forwarding) and batch iteration (pause/resume/stop)
-5. Special handling for macros (sub-graph redirection), review gates, and HTTP SSE
+2. Queues source nodes (no incoming edges) for execution
+3. Executes nodes via type-specific executors; each node pushes output values through outgoing edges to downstream nodes
+4. Downstream nodes execute once all expected inputs are received (with timer-based coalescing to batch near-simultaneous arrivals)
+5. Tracks pending executions and sets COMPLETED/ERROR status when all branches finish
+6. Supports streaming (immediate forwarding), batch iteration (pause/resume/stop/manual step), and approval gates (Review Node)
+7. Rework cascades clear all downstream `receivedInputs` (including macro internals), cancel stale pending executions, re-execute upstream roots, and wait for the full cascade to settle via `waitForCascade()` — correctly handling async operations like HTTP requests and API polling
+8. Special handling for macros (sub-graph redirection via macroInEdge/macroOutput) and HTTP SSE
 
 ### Node System
 
@@ -112,29 +120,39 @@ All settings persist to `localStorage` and are accessed via the `useSettings` ho
 
 ## Node Types
 
-### Core (20)
+### Core (28)
 
-| Node              | Description                                                   |
-| ----------------- | ------------------------------------------------------------- |
-| Input Text        | Static string value                                           |
-| Media Input       | Unified image/audio/video input with FILE/URL toggle          |
-| Folder Input      | Directory picker with auto-categorization by file type        |
-| Universal Output  | Adaptive display for any pipeline/model result with rich viz  |
-| Output Text       | Readonly text display with copy support                       |
-| Output Image      | Image display with before/after compare slider                |
-| Audio Output      | Audio playback with download                                  |
-| Download Data     | Multi-format export (JSON/CSV/TXT/ZIP/media)                  |
-| Custom Script     | Execute JavaScript with dynamic I/O ports                     |
-| HTTP Request      | Fetch API with SSE streaming                                  |
-| JSON Path         | Extract values via dot notation                               |
-| Image Process     | Aspect ratio, resolution, crop, format, quality               |
-| Macro Node        | Container for nested sub-workflows                            |
-| Batch Iterator    | Iterate arrays with progress, pause/resume/stop               |
-| Delay             | Pause execution for N milliseconds                            |
-| List Aggregator   | Collect streamed items into a single array                    |
-| Review Node       | Manual approval gate with preview and inline edit             |
-| Converter         | Format conversion between data types                          |
-| Poll Until        | Poll a URL until a condition is met (queue-based APIs)        |
+| Node             | Description                                                  |
+| ---------------- | ------------------------------------------------------------ |
+| Input Text       | Static string value                                          |
+| Media Input      | Unified image/audio/video input with FILE/URL/MIC modes      |
+| Folder Input     | Directory picker with auto-categorization by file type       |
+| Universal Output | Adaptive display for any pipeline/model result with rich viz |
+| Output Text      | Readonly text display with copy support                      |
+| Output Image     | Image display with before/after compare slider               |
+| Audio Output     | Audio playback with download                                 |
+| Download Data    | Multi-format export (JSON/CSV/TXT/ZIP/media)                 |
+| Text Template    | Interpolate `{{var}}` placeholders with connected inputs     |
+| String Ops       | Split, join, replace, uppercase, lowercase, trim, slice, regex extract, length |
+| Merge            | Combine inputs into object, array, or flattened array        |
+| Switch           | Route data to TRUE or FALSE output based on value/truthy/contains/regex |
+| Custom Script    | Execute JavaScript with dynamic I/O ports                    |
+| HTTP Request     | Fetch API with SSE streaming                                 |
+| JSON Path        | Extract values via dot notation                              |
+| Image Process    | Aspect ratio, resolution, crop, format, quality, round-to-8, size match |
+| Converter        | Format conversion (data URI, blob URL, text, JSON)           |
+| Poll Until       | Poll a URL until a condition is met (queue-based APIs)       |
+| Macro Node       | Container for nested sub-workflows                           |
+| Batch Iterator   | Iterate arrays with progress, pause/resume/stop, manual step with Next/Rework |
+| Counter          | Auto-incrementing counter with prefix/suffix formatting      |
+| Delay            | Pause execution for N milliseconds                           |
+| List Aggregator  | Collect streamed items into a single array                   |
+| Review Node      | Manual approval gate with Approve/Rework/Cancel              |
+| Comment          | Non-executing annotation node for documenting workflows      |
+| Chat Display     | Chat-style message view with left/right sides and streaming  |
+| Video Input      | Video data from file upload or URL                           |
+
+Plus 5 macro-internal node types (Macro In Edge, Macro In Param, Macro In Settings, Macro Out, Macro Connections) visible only inside macro containers.
 
 ### Transformers.js (13)
 
@@ -172,13 +190,15 @@ The Universal Output node auto-detects data shape and renders the appropriate vi
 
 ## Workflow Registry
 
-**IMPORT > REGISTRY** provides 54 ready-made workflows organized by category:
+**IMPORT > REGISTRY** provides 64 ready-made workflows organized by category:
 
-- **Pipeline workflows (25)** — One per task, pre-configured with default model and sample data
+- **Pipeline workflows (29)** — NLP, Vision, Audio, and Multimodal tasks with default models and sample data
 - **Batch processing (3)** — Folder input with progress tracking (image captioning, text classification, background removal)
-- **Model class workflows (20)** — Multi-node workflows using individual Transformers.js nodes (generate-mode or call-mode)
-- **Additional workflows (3)** — BRIA RMBG-2.0 background removal, Kokoro TTS, Jina CLIP v2
-- **API workflows (3)** — fal.ai synthetic dataset, Replicate I2V prompt variations, Wavespeed video head swap
+- **Model class workflows (19)** — Multi-node workflows using individual Transformers.js nodes (generate-mode or call-mode)
+- **API workflows (5)** — fal.ai, Wavespeed, and Replicate integrations
+- **New node demos (5)** — Showcases for Text Template, Switch, Merge, String Ops, and Counter nodes
+- **Pipeline chains (2)** — Multi-step pipelines combining different tasks
+- **Additional workflows (1)** — Standalone specialized workflows
 
 Model sizes are shown with color-coded badges (green < 100 MB, yellow < 500 MB, red > 500 MB).
 
@@ -260,8 +280,12 @@ Integration tests cover all 19 model classes with real model downloads, forward 
 | [React](https://react.dev)                                               | 19           | UI framework                 |
 | [@xyflow/react](https://reactflow.dev)                                   | 12.10        | Node graph editor            |
 | [@huggingface/transformers](https://huggingface.co/docs/transformers.js) | 4.0.0-next.6 | In-browser ML inference      |
-| [Tailwind CSS](https://tailwindcss.com)                                  | 4.1          | Utility-first styling        |
+| [Tailwind CSS](https://tailwindcss.com)                                  | 4.2          | Utility-first styling        |
 | [JSZip](https://stuk.github.io/jszip/)                                   | 3.10         | ZIP file generation          |
+
+## Security Considerations
+
+The **Custom Script** node executes arbitrary JavaScript via `AsyncFunction`. Scripts run in the page context with full access to the DOM, `localStorage`, and network APIs. Only run workflows from sources you trust.
 
 ## License
 

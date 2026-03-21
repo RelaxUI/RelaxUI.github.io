@@ -66,6 +66,20 @@ export const PollUntilNode = (props: any) => {
             />
           </div>
         </div>
+        <div className="flex flex-col gap-0.5">
+          <label className="text-[9px] text-(--relax-text-muted) font-bold tracking-widest uppercase">
+            MAX ATTEMPTS (0 = unlimited)
+          </label>
+          <input
+            type="number"
+            min="0"
+            value={props.data.maxAttempts ?? 300}
+            onChange={(e) =>
+              updateNodeData(props.id, "maxAttempts", parseInt(e.target.value) || 0)
+            }
+            className="w-full bg-(--relax-bg-primary)/60 border border-(--relax-border) rounded px-2 py-1 text-xs font-mono text-white focus:outline-none focus:border-(--relax-accent)"
+          />
+        </div>
         {poll && (
           <div className="flex flex-col gap-1 mt-1">
             <div className="flex justify-between text-[9px] font-mono">

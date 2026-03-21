@@ -56,6 +56,11 @@ export const NODE_INFO: Record<string, NodeInfo> = {
     in: "None",
     out: "Parameter value",
   },
+  macroInSettings: {
+    desc: "Reads a value from the app Settings (e.g. API keys). Configure in Settings dialog.",
+    in: "None",
+    out: "Setting value",
+  },
   macroOutput: {
     desc: "Passes data out of the Macro to the parent workflow.",
     in: "Internal result",
@@ -82,8 +87,8 @@ export const NODE_INFO: Record<string, NodeInfo> = {
     out: "out (Any)",
   },
   listAggregator: {
-    desc: "Collects incoming items into a single array. Useful for gathering the results of a Batch Iterator loop.",
-    in: "item (Any)",
+    desc: "Collects incoming items into a single array. Optionally accepts a NAME to store {name, data} entries for structured output (e.g. ZIP with folder paths).",
+    in: "item (Any), name (String, optional)",
     out: "list (Array)",
   },
   downloadData: {
@@ -92,9 +97,9 @@ export const NODE_INFO: Record<string, NodeInfo> = {
     out: "None",
   },
   imageProcess: {
-    desc: "Resizes, crops, and converts images. Supports aspect ratio presets, resolution scaling (1K/2K/4K), crop anchoring, format conversion, and quality control.",
-    in: "image (Data URL)",
-    out: "Processed image (Data URL)",
+    desc: "Resizes, crops, and converts images. Supports aspect ratio presets, resolution scaling (1K/2K/4K), crop anchoring, format conversion, quality control, and round-to-8 toggle. Optional SIZE input overrides calculated dimensions (connect from another ImageProcess to match sizes). Outputs SIZE as 'WxH'.",
+    in: "image (Data URL), size (String 'WxH', optional — overrides dimensions)",
+    out: "out (Data URL), size (String 'WxH')",
   },
   reviewNode: {
     desc: "Pauses execution for manual approval. Buttons only: Approve, Rework (re-trigger upstream), and Cancel.",
@@ -110,6 +115,41 @@ export const NODE_INFO: Record<string, NodeInfo> = {
     desc: "Polls a URL at a configurable interval until a JSON status field matches the done value. Ideal for queue-based APIs (fal.ai, Wavespeed, etc.). Optionally fetches a separate result URL when done.",
     in: "url (String), headers (JSON String), resultUrl (String, optional)",
     out: "Final JSON response",
+  },
+  textTemplate: {
+    desc: "Interpolates {{var1}}, {{var2}}, etc. placeholders in a template string with values from connected inputs. Great for assembling prompts, headers, and structured text.",
+    in: "var1, var2, var3, var4 (Any)",
+    out: "Interpolated string",
+  },
+  switchNode: {
+    desc: "Routes data to TRUE or FALSE output based on a condition. Modes: match value, truthy/falsy, contains, or regex match.",
+    in: "in (Any)",
+    out: "true (matched data), false (unmatched data)",
+  },
+  mergeNode: {
+    desc: "Combines up to 4 inputs into a single object or array. Object mode uses handle names as keys. Array mode collects values in order. Concat mode flattens array inputs into one flat array.",
+    in: "in1, in2, in3, in4 (Any)",
+    out: "Merged object, array, or flattened array",
+  },
+  stringOps: {
+    desc: "Performs string operations: split, join, replace, uppercase, lowercase, trim, slice, regex extract, or length.",
+    in: "in (String)",
+    out: "Transformed result",
+  },
+  counterNode: {
+    desc: "Increments a counter each time triggered. Outputs both the raw count and a formatted label with optional prefix/suffix. Useful in batch loops for naming.",
+    in: "trigger (Any)",
+    out: "count (Number), label (String)",
+  },
+  commentNode: {
+    desc: "A non-executing annotation node for documenting your workflow. Has no inputs or outputs.",
+    in: "None",
+    out: "None",
+  },
+  chatNode: {
+    desc: "Displays messages in a chat-style interface. Connect text to LEFT and RIGHT handles to show messages on each side. Supports streaming. Labels are editable.",
+    in: "left (String), right (String)",
+    out: "None",
   },
   // Transformers.js nodes
   transformersPipeline: {

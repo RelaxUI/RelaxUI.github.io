@@ -19,23 +19,21 @@ import { useCopyPaste } from "@/hooks/useCopyPaste.ts";
 import { useFlowState } from "@/hooks/useFlowState.ts";
 import { useGraphRunner } from "@/hooks/useGraphRunner.ts";
 import { useKeyboardShortcuts } from "@/hooks/useKeyboardShortcuts.ts";
+import { useSettings } from "@/hooks/useSettings.ts";
 import { useUndoRedo } from "@/hooks/useUndoRedo.ts";
 import { edgeTypes, nodeTypes } from "@/nodes/registry.ts";
+import {
+  validateWorkflow,
+  type ValidationIssue,
+} from "@/utils/validateWorkflow.ts";
 
 export function FlowEditor() {
   const flow = useFlowState();
   const runner = useGraphRunner();
+  const { settings } = useSettings();
 
-  // Suppress benign ResizeObserver loop errors (common with dynamic node layouts)
-  useEffect(() => {
-    const handler = (e: ErrorEvent) => {
-      if (e.message?.includes("ResizeObserver loop")) {
-        e.stopImmediatePropagation();
-      }
-    };
-    window.addEventListener("error", handler);
-    return () => window.removeEventListener("error", handler);
-  }, []);
+  // ResizeObserver loop error suppression is handled by an early <script> in
+  // index.html (before Bun's dev console proxy captures it).
 
   const [hoveredEdgeId, setHoveredEdgeId] = useState<string | null>(null);
   const [infoNodeId, setInfoNodeId] = useState<string | null>(null);
@@ -48,6 +46,9 @@ export function FlowEditor() {
   const [showMiniMap, setShowMiniMap] = useState(false);
   const [settingsOpen, setSettingsOpen] = useState(false);
   const [nodePickerOpen, setNodePickerOpen] = useState(false);
+  const [validationIssues, setValidationIssues] = useState<
+    ValidationIssue[] | null
+  >(null);
 
   // Undo/Redo
   const undoRedo = useUndoRedo(
@@ -55,6 +56,7 @@ export function FlowEditor() {
     () => flow.edges,
     (nodes) => flow.setNodes(nodes as any),
     (edges) => flow.setEdges(edges as any),
+    settings.undoHistorySize,
   );
 
   // Copy/Paste
@@ -97,6 +99,13 @@ export function FlowEditor() {
     [flow, undoRedo],
   );
 
+  // Keep the runner's live nodes ref in sync so rework uses fresh node data.
+  // Render-body for synchronous access; useEffect as post-commit safety net.
+  runner.liveNodesRef.current = flow.nodes;
+  useEffect(() => {
+    runner.liveNodesRef.current = flow.nodes;
+  }, [flow.nodes]);
+
   const handleRunFlow = useCallback(() => {
     runner.runFlow(flow.nodes, flow.edges);
   }, [runner, flow.nodes, flow.edges]);
@@ -110,6 +119,11 @@ export function FlowEditor() {
     },
     [flow, runner],
   );
+
+  const handleValidate = useCallback(() => {
+    const issues = validateWorkflow(flow.nodes, flow.edges);
+    setValidationIssues(issues);
+  }, [flow.nodes, flow.edges]);
 
   // Keyboard shortcuts
   const shortcutHandlers = useMemo(
@@ -167,82 +181,64 @@ export function FlowEditor() {
   const clearWorkflow = useCallback(() => {
     flow.setNodes([]);
     flow.setEdges([]);
-  }, [flow]);
-
-  const resetToDefault = useCallback(() => {
-    const d = flow.getDefaultGraph();
-    flow.setNodes(d.nodes as any);
-    flow.setEdges(d.edges as any);
+    localStorage.setItem("relaxui_autosave_v1", JSON.stringify({ nodes: [], edges: [], viewport: { x: 0, y: 0, zoom: 1 } }));
   }, [flow]);
 
   return (
     <RuntimeContext.Provider
-      value={{
-        globalNodes: flow.nodes,
-        globalEdges: flow.edges,
-        hoveredEdgeId,
-        setHoveredEdgeId,
-        updateNodeData: flow.updateNodeData,
-        removeEdgeByHandle: flow.removeEdgeByHandle,
-        displayData: runner.displayData,
-        computingNodes: runner.computingNodes,
-        nodeErrors: runner.nodeErrors,
-        activeEdges: runner.activeEdges,
-        setInfoNodeId,
-        deleteNode: flow.deleteNode,
-        setCurrentView: flow.setCurrentView,
-        setFullscreenImage,
-        modelLoadingState: runner.modelLoadingState,
-        executionTimes: runner.executionTimes,
-        clearDisplayData: runner.clearDisplayData,
-        resolveApproval: runner.resolveApproval,
-        rejectApproval: runner.rejectApproval,
-        pauseNode: runner.pauseNode,
-        resumeNode: runner.resumeNode,
-        stopNode: runner.stopNode,
-      }}
+      value={useMemo(
+        () => ({
+          globalNodes: flow.nodes,
+          globalEdges: flow.edges,
+          hoveredEdgeId,
+          setHoveredEdgeId,
+          updateNodeData: flow.updateNodeData,
+          removeEdgeByHandle: flow.removeEdgeByHandle,
+          displayData: runner.displayData,
+          computingNodes: runner.computingNodes,
+          nodeErrors: runner.nodeErrors,
+          activeEdges: runner.activeEdges,
+          setInfoNodeId,
+          deleteNode: flow.deleteNode,
+          setCurrentView: flow.setCurrentView,
+          setFullscreenImage,
+          modelLoadingState: runner.modelLoadingState,
+          executionTimes: runner.executionTimes,
+          clearDisplayData: runner.clearDisplayData,
+          resolveApproval: runner.resolveApproval,
+          rejectApproval: runner.rejectApproval,
+          pauseNode: runner.pauseNode,
+          resumeNode: runner.resumeNode,
+          stopNode: runner.stopNode,
+        }),
+        [
+          flow.nodes, flow.edges, hoveredEdgeId, flow.updateNodeData,
+          flow.removeEdgeByHandle, runner.displayData, runner.computingNodes,
+          runner.nodeErrors, runner.activeEdges, flow.deleteNode,
+          flow.setCurrentView, runner.modelLoadingState, runner.executionTimes,
+          runner.clearDisplayData, runner.resolveApproval, runner.rejectApproval,
+          runner.pauseNode, runner.resumeNode, runner.stopNode,
+        ],
+      )}
     >
       <div className="w-full h-screen flex flex-col bg-(--relax-bg-primary) font-sans overflow-hidden select-none text-(--relax-text-default)">
-        <style>{`
-          @import url('https://fonts.googleapis.com/css2?family=Inter:wght@400;600;700&family=JetBrains+Mono:wght@400;700&display=swap');
-          .font-sans { font-family: 'Inter', sans-serif; }
-          .font-mono { font-family: 'JetBrains Mono', monospace; }
-          .custom-scrollbar::-webkit-scrollbar { width: 6px; height: 6px; }
-          .custom-scrollbar::-webkit-scrollbar-track { background: transparent; }
-          .custom-scrollbar::-webkit-scrollbar-thumb { background: var(--relax-border-hover); border-radius: 3px; }
-          .custom-scrollbar::-webkit-scrollbar-thumb:hover { background: var(--relax-border-active); }
-          @keyframes borderPulse {
-              0% { border-color: rgba(0, 255, 170, 0.4); box-shadow: 0 0 15px rgba(0, 255, 170, 0.2); }
-              50% { border-color: rgba(0, 255, 170, 1); box-shadow: 0 0 30px rgba(0, 255, 170, 0.5); }
-              100% { border-color: rgba(0, 255, 170, 0.4); box-shadow: 0 0 15px rgba(0, 255, 170, 0.2); }
-          }
-          .computing-node { animation: borderPulse 1.5s infinite; border-color: var(--relax-accent) !important; }
-          .react-flow__node { cursor: default; }
-          .custom-drag-handle { cursor: grab; }
-          .custom-drag-handle:active { cursor: grabbing; }
-          @keyframes dashMove { from { stroke-dashoffset: 24; } to { stroke-dashoffset: 0; } }
-          .edge-dashed-animate { stroke-dasharray: 12 12; animation: dashMove 0.5s linear infinite; }
-          .custom-handle { width: 12px !important; height: 12px !important; transition: all 0.2s ease; }
-          .custom-handle:hover { width: 18px !important; height: 18px !important; }
-          .react-flow__attribution { display: none; }
-        `}</style>
-
         <TopBar
           currentView={flow.currentView}
           setCurrentView={flow.setCurrentView}
           breadcrumbs={flow.breadcrumbs}
           runStatus={runner.runStatus}
           runFlow={handleRunFlow}
+          stopFlow={runner.stopFlow}
           exportFlow={flow.exportFlow}
           openImport={() => setImportDialogOpen(true)}
           clearWorkflow={clearWorkflow}
-          resetToDefault={resetToDefault}
           undo={undoRedo.undo}
           redo={undoRedo.redo}
           canUndo={undoRedo.canUndo}
           canRedo={undoRedo.canRedo}
           openSettings={() => setSettingsOpen(true)}
           openNodePicker={() => setNodePickerOpen(true)}
+          validateWorkflow={handleValidate}
         />
 
         {/* REACT FLOW CANVAS */}
@@ -347,6 +343,68 @@ export function FlowEditor() {
             image={fullscreenImage}
             onClose={() => setFullscreenImage(null)}
           />
+        )}
+
+        {/* VALIDATION RESULTS */}
+        {validationIssues !== null && (
+          <div
+            className="fixed inset-0 z-110 bg-black/60 backdrop-blur-sm flex items-center justify-center p-6"
+            onClick={() => setValidationIssues(null)}
+            role="dialog"
+            aria-modal="true"
+          >
+            <div
+              className="bg-(--relax-bg-elevated) border border-(--relax-border-hover) rounded-xl shadow-2xl w-full max-w-md max-h-[60vh] flex flex-col overflow-hidden"
+              onClick={(e) => e.stopPropagation()}
+            >
+              <div className="flex items-center justify-between px-6 py-4 border-b border-(--relax-border)">
+                <h2 className="text-white text-sm font-bold tracking-widest">
+                  VALIDATION
+                </h2>
+                <button
+                  onClick={() => setValidationIssues(null)}
+                  className="text-(--relax-text-muted) hover:text-white transition-colors text-lg leading-none"
+                >
+                  &times;
+                </button>
+              </div>
+              <div className="flex-1 overflow-y-auto custom-scrollbar p-4">
+                {validationIssues.length === 0 ? (
+                  <div className="text-center py-8">
+                    <div className="text-(--relax-success) text-lg mb-2">
+                      &#10003;
+                    </div>
+                    <p className="text-(--relax-success) text-xs font-bold tracking-wider">
+                      NO ISSUES FOUND
+                    </p>
+                  </div>
+                ) : (
+                  <div className="flex flex-col gap-2">
+                    {validationIssues.map((issue, i) => (
+                      <div
+                        key={i}
+                        className={`px-3 py-2 rounded border text-xs ${
+                          issue.severity === "error"
+                            ? "bg-red-500/10 border-red-500/30 text-red-400"
+                            : "bg-yellow-500/10 border-yellow-500/30 text-yellow-400"
+                        }`}
+                      >
+                        <span className="font-bold text-[9px] uppercase tracking-wider">
+                          {issue.severity}
+                        </span>
+                        <span className="mx-1.5 opacity-40">|</span>
+                        <span className="font-mono text-white/70">
+                          {issue.nodeLabel}
+                        </span>
+                        <span className="mx-1.5 opacity-40">—</span>
+                        <span>{issue.message}</span>
+                      </div>
+                    ))}
+                  </div>
+                )}
+              </div>
+            </div>
+          </div>
         )}
       </div>
     </RuntimeContext.Provider>

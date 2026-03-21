@@ -1,7 +1,7 @@
 import { RuntimeContext } from "@/context/RuntimeContext.ts";
 import { BaseNode } from "@/nodes/BaseNode.tsx";
 import { useUpdateNodeInternals } from "@xyflow/react";
-import { useContext, useEffect } from "react";
+import { useContext, useEffect, useRef, useState } from "react";
 
 export const CustomScriptNode = (props: any) => {
   const { updateNodeData, removeEdgeByHandle } = useContext(RuntimeContext)!;
@@ -12,6 +12,17 @@ export const CustomScriptNode = (props: any) => {
     "in3",
     "in4",
   ];
+
+  // Local state to prevent cursor jumping during edits
+  const [localScript, setLocalScript] = useState<string>(
+    props.data.script ?? "",
+  );
+  const isFocused = useRef(false);
+
+  // Sync from external changes only when textarea is not focused
+  useEffect(() => {
+    if (!isFocused.current) setLocalScript(props.data.script ?? "");
+  }, [props.data.script]);
 
   useEffect(() => {
     updateNodeInternals(props.id);
@@ -52,8 +63,17 @@ export const CustomScriptNode = (props: any) => {
       </div>
       <textarea
         className="nowheel nodrag w-full flex-1 bg-(--relax-bg-primary)/60 border border-(--relax-border) rounded p-2 text-xs font-mono text-white focus:outline-none focus:border-(--relax-accent) resize-none custom-scrollbar"
-        value={props.data.script}
-        onChange={(e) => updateNodeData(props.id, "script", e.target.value)}
+        value={localScript}
+        onChange={(e) => {
+          setLocalScript(e.target.value);
+          updateNodeData(props.id, "script", e.target.value);
+        }}
+        onFocus={() => {
+          isFocused.current = true;
+        }}
+        onBlur={() => {
+          isFocused.current = false;
+        }}
       />
     </BaseNode>
   );

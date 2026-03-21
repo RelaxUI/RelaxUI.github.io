@@ -1,16 +1,26 @@
 import { DEFAULTS } from "@/config/defaults.ts";
 import { RuntimeContext } from "@/context/RuntimeContext.ts";
 import { BaseNode } from "@/nodes/BaseNode.tsx";
-import { useContext, useState } from "react";
+import { useContext, useEffect, useRef, useState } from "react";
 
 export const BatchIteratorNode = (props: any) => {
-  const { updateNodeData, displayData, computingNodes, pauseNode, resumeNode, stopNode, resolveApproval } = useContext(RuntimeContext)!;
+  const { updateNodeData, displayData, computingNodes, pauseNode, resumeNode, stopNode, resolveApproval, clearDisplayData } = useContext(RuntimeContext)!;
   const progress = displayData[props.id];
   const hasProg = progress && typeof progress.current === "number";
   const isRunning = computingNodes.has(props.id);
   const [paused, setPaused] = useState(false);
+  const wasRunning = useRef(false);
+
+  // Reset paused state when a new run starts
+  useEffect(() => {
+    if (isRunning && !wasRunning.current) {
+      setPaused(false);
+    }
+    wasRunning.current = isRunning;
+  }, [isRunning]);
 
   const waitingForStep = progress?.waitingForStep === true;
+  const isLastItem = hasProg && progress.current >= progress.total;
 
   return (
     <BaseNode {...props}>
@@ -82,12 +92,24 @@ export const BatchIteratorNode = (props: any) => {
         )}
         {waitingForStep && (
           <div className="flex gap-1.5 mt-1">
-            <button
-              onClick={() => resolveApproval(props.id, { action: "next" })}
-              className="flex-1 px-2 py-1 rounded text-[9px] font-bold tracking-widest uppercase border bg-green-500/20 border-green-500/50 text-green-400 hover:bg-green-500/30 transition-colors cursor-pointer"
-            >
-              NEXT
-            </button>
+            {isLastItem ? (
+              <button
+                onClick={() => {
+                  resolveApproval(props.id, { action: "finish" });
+                  clearDisplayData(props.id);
+                }}
+                className="flex-1 px-2 py-1 rounded text-[9px] font-bold tracking-widest uppercase border bg-(--relax-accent)/20 border-(--relax-accent)/50 text-(--relax-accent) hover:bg-(--relax-accent)/30 transition-colors cursor-pointer"
+              >
+                FINISH
+              </button>
+            ) : (
+              <button
+                onClick={() => resolveApproval(props.id, { action: "next" })}
+                className="flex-1 px-2 py-1 rounded text-[9px] font-bold tracking-widest uppercase border bg-green-500/20 border-green-500/50 text-green-400 hover:bg-green-500/30 transition-colors cursor-pointer"
+              >
+                NEXT
+              </button>
+            )}
             <button
               onClick={() => resolveApproval(props.id, { action: "rework" })}
               className="flex-1 px-2 py-1 rounded text-[9px] font-bold tracking-widest uppercase border bg-yellow-500/20 border-yellow-500/50 text-yellow-400 hover:bg-yellow-500/30 transition-colors cursor-pointer"

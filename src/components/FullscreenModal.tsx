@@ -20,8 +20,8 @@ export function FullscreenModal({ image, onClose }: FullscreenModalProps) {
       >
         {typeof image === "object" && image._boundingBoxes ? (
           <BoundingBoxOverlay
-            imageUrl={image.in1}
-            detections={image.annotations}
+            imageUrl={image.in1 || ""}
+            detections={image.annotations || []}
             maxHeight={window.innerHeight * 0.85}
           />
         ) : typeof image === "object" ? (
@@ -38,11 +38,25 @@ export function FullscreenModal({ image, onClose }: FullscreenModalProps) {
           />
         )}
       </div>
-      <div
-        className="absolute top-6 right-8 text-(--relax-text-muted) text-4xl hover:text-white transition-colors cursor-pointer"
-        onClick={onClose}
-      >
-        x
+      <div className="absolute top-6 right-8 flex items-center gap-4">
+        {image?.onDownload && (
+          <button
+            onClick={(e) => { e.stopPropagation(); image.onDownload(); }}
+            className="text-(--relax-text-muted) hover:text-white transition-colors cursor-pointer"
+            title="Download"
+          >
+            <svg className="w-7 h-7" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M4 16v1a3 3 0 003 3h10a3 3 0 003-3v-1m-4-4l-4 4m0 0l-4-4m4 4V4" />
+            </svg>
+          </button>
+        )}
+        <button
+          className="text-(--relax-text-muted) text-4xl hover:text-white transition-colors cursor-pointer bg-transparent border-0"
+          onClick={onClose}
+          aria-label="Close fullscreen view"
+        >
+          x
+        </button>
       </div>
     </div>
   );

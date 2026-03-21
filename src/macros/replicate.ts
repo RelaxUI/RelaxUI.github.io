@@ -89,7 +89,7 @@ export const replicate: MacroDefinition = {
         id: generateId("n"),
         type: "inputText",
         macroId: mId,
-        position: { x: 700, y: 240 },
+        position: { x: 700, y: 260 },
         data: {
           value: "https://api.replicate.com/v1/models/wan-video/wan-2.2-i2v-fast/predictions",
           label: "URL",

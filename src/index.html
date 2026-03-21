@@ -18,7 +18,29 @@
     />
     <meta name="apple-mobile-web-app-title" content="RelaxUI" />
     <link rel="manifest" href="./assets/site.webmanifest" />
+    <link rel="preconnect" href="https://fonts.googleapis.com" />
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+    <link
+      href="https://fonts.googleapis.com/css2?family=Inter:wght@400;600;700&family=JetBrains+Mono:wght@400;700&display=swap"
+      rel="stylesheet"
+    />
     <title>RelaxUI</title>
+    <script>
+      // Suppress benign "ResizeObserver loop" errors early, before Bun's dev
+      // console proxy captures them and echoes "frontend error" to the terminal.
+      var _origError = console.error;
+      console.error = function () {
+        if (typeof arguments[0] === "string" && arguments[0].indexOf("ResizeObserver loop") !== -1) return;
+        if (arguments[0] && typeof arguments[0].message === "string" && arguments[0].message.indexOf("ResizeObserver loop") !== -1) return;
+        return _origError.apply(console, arguments);
+      };
+      window.addEventListener("error", function (e) {
+        if (e.message && e.message.indexOf("ResizeObserver loop") !== -1) {
+          e.preventDefault();
+          e.stopImmediatePropagation();
+        }
+      });
+    </script>
   </head>
   <body>
     <div id="root"></div>

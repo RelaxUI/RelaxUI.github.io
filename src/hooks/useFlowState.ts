@@ -206,6 +206,7 @@ export function useFlowState() {
 
   const exportFlow = useCallback(() => {
     const flow = {
+      version: 1,
       nodes,
       edges,
       viewport: reactFlowInstance
@@ -220,6 +221,7 @@ export function useFlowState() {
     link.href = url;
     link.download = `dataflow-${Date.now()}.json`;
     link.click();
+    URL.revokeObjectURL(url);
   }, [nodes, edges, reactFlowInstance]);
 
   const importFlow = useCallback(
@@ -304,19 +306,18 @@ export function useFlowState() {
   );
 
   const activeView = currentView || null;
-  const visibleNodes = nodes
-    .filter((n: any) => (n.macroId || null) === activeView)
-    .map((n: any) => (n.dragHandle ? n : { ...n, dragHandle: ".custom-drag-handle" }));
-  const visibleEdges = edges.filter((e) => {
-    const sNode = nodes.find((n: any) => n.id === e.source);
-    const tNode = nodes.find((n: any) => n.id === e.target);
-    return (
-      sNode &&
-      tNode &&
-      ((sNode as any).macroId || null) === activeView &&
-      ((tNode as any).macroId || null) === activeView
-    );
-  });
+  // Build a Set of node IDs in the active view for O(1) edge filtering
+  const viewNodeIds = new Set<string>();
+  const visibleNodes = [];
+  for (const n of nodes as any[]) {
+    if ((n.macroId || null) === activeView) {
+      viewNodeIds.add(n.id);
+      visibleNodes.push(n.dragHandle ? n : { ...n, dragHandle: ".custom-drag-handle" });
+    }
+  }
+  const visibleEdges = edges.filter(
+    (e) => viewNodeIds.has(e.source) && viewNodeIds.has(e.target),
+  );
 
   return {
     nodes: nodes as FlowNode[],
@@ -339,6 +340,5 @@ export function useFlowState() {
     visibleNodes,
     visibleEdges,
     reactFlowInstance,
-    getDefaultGraph,
   };
 }

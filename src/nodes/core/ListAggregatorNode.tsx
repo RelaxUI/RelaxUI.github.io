@@ -2,6 +2,25 @@ import { RuntimeContext } from "@/context/RuntimeContext.ts";
 import { BaseNode } from "@/nodes/BaseNode.tsx";
 import { useContext } from "react";
 
+function isNamedEntry(item: any): item is { name: string; data: any } {
+  return item && typeof item === "object" && "name" in item && "data" in item;
+}
+
+function isMediaUrl(val: any): boolean {
+  if (typeof val !== "string") return false;
+  return val.startsWith("blob:") || (val.startsWith("data:") && /^data:(image|audio|video)/.test(val));
+}
+
+function formatPreview(val: any): string {
+  if (isMediaUrl(val)) return "(media)";
+  if (typeof val === "string") return val.length > 40 ? val.slice(0, 40) + "..." : val;
+  if (typeof val === "object") {
+    const s = JSON.stringify(val);
+    return s.length > 40 ? s.slice(0, 40) + "..." : s;
+  }
+  return String(val);
+}
+
 export const ListAggregatorNode = (props: any) => {
   const { displayData, updateNodeData, clearDisplayData } = useContext(RuntimeContext)!;
   const list = displayData[props.id] || [];
@@ -29,7 +48,15 @@ export const ListAggregatorNode = (props: any) => {
               className="border-b border-(--relax-border) py-1 truncate text-(--relax-text-default)"
             >
               <span className="text-(--relax-text-muted) mr-2">[{i}]</span>
-              {typeof item === "object" ? JSON.stringify(item) : String(item)}
+              {isNamedEntry(item) ? (
+                <>
+                  <span className="text-(--relax-accent)">{item.name}</span>
+                  <span className="text-(--relax-text-muted) mx-1">&rarr;</span>
+                  <span>{formatPreview(item.data)}</span>
+                </>
+              ) : (
+                typeof item === "object" ? JSON.stringify(item) : String(item)
+              )}
             </div>
           ))}
         </div>

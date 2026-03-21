@@ -12,6 +12,16 @@ function unwrap(v: any): string | undefined {
   return undefined;
 }
 
+const mimeToExt: Record<string, string> = {
+  "image/png": ".png",
+  "image/jpeg": ".jpg",
+  "image/webp": ".webp",
+  "image/gif": ".gif",
+  "image/bmp": ".bmp",
+  "image/svg+xml": ".svg",
+  "image/avif": ".avif",
+};
+
 /** Try to extract a filename from a URL/data-URI, fallback to default */
 function extractName(src: string | undefined, fallback: string): string {
   if (!src) return fallback;
@@ -29,6 +39,15 @@ function extractName(src: string | undefined, fallback: string): string {
   return fallback;
 }
 
+/** Ensure filename extension matches the actual MIME type of the blob */
+function fixExtension(filename: string, mimeType: string): string {
+  const ext = mimeToExt[mimeType];
+  if (!ext) return filename;
+  const dotIdx = filename.lastIndexOf(".");
+  const base = dotIdx > 0 ? filename.substring(0, dotIdx) : filename;
+  return base + ext;
+}
+
 export const OutputImageNode = (props: any) => {
   const { displayData, setFullscreenImage } = useContext(RuntimeContext)!;
   const data = displayData[props.id];
@@ -39,10 +58,11 @@ export const OutputImageNode = (props: any) => {
   const handleDownload = useCallback(async () => {
     const src = img2 || img1;
     if (!src) return;
-    const filename = extractName(img1, "image.png");
+    const baseName = extractName(img1, "image.png");
     try {
       const res = await fetch(src);
       const blob = await res.blob();
+      const filename = fixExtension(baseName, blob.type);
       const blobUrl = URL.createObjectURL(blob);
       const a = document.createElement("a");
       a.href = blobUrl;
@@ -53,7 +73,7 @@ export const OutputImageNode = (props: any) => {
       // Fallback for data URIs or same-origin
       const a = document.createElement("a");
       a.href = src;
-      a.download = filename;
+      a.download = baseName;
       a.click();
     }
   }, [img1, img2]);
@@ -80,7 +100,7 @@ export const OutputImageNode = (props: any) => {
                 onClick={(e) => {
                   e.stopPropagation();
                   setFullscreenImage(
-                    img1 && img2 ? { in1: img1, in2: img2 } : img1 || img2,
+                    img1 && img2 ? { in1: img1, in2: img2, onDownload: handleDownload } : { in1: img1 || img2, onDownload: handleDownload },
                   );
                 }}
                 className="bg-(--relax-bg-primary)/90 text-white border border-(--relax-border-hover) rounded p-1.5 hover:text-(--relax-accent) hover:border-(--relax-accent) transition-all shadow-lg nodrag"

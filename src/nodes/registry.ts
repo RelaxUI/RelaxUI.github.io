@@ -3,12 +3,19 @@ import type { FlowNode, NodeHandles } from "@/types.ts";
 
 // Core nodes
 import { BatchIteratorNode } from "@/nodes/core/BatchIteratorNode.tsx";
+import { ChatNode } from "@/nodes/core/ChatNode.tsx";
+import { CommentNode } from "@/nodes/core/CommentNode.tsx";
 import { ConverterNode } from "@/nodes/core/ConverterNode.tsx";
+import { CounterNode } from "@/nodes/core/CounterNode.tsx";
 import { CustomScriptNode } from "@/nodes/core/CustomScriptNode.tsx";
 import { DelayNode } from "@/nodes/core/DelayNode.tsx";
 import { DownloadDataNode } from "@/nodes/core/DownloadDataNode.tsx";
 import { ImageProcessNode } from "@/nodes/core/ImageProcessNode.tsx";
+import { MergeNode } from "@/nodes/core/MergeNode.tsx";
 import { ReviewNode } from "@/nodes/core/ReviewNode.tsx";
+import { StringOpsNode } from "@/nodes/core/StringOpsNode.tsx";
+import { SwitchNode } from "@/nodes/core/SwitchNode.tsx";
+import { TextTemplateNode } from "@/nodes/core/TextTemplateNode.tsx";
 import { FolderInputNode } from "@/nodes/core/FolderInputNode.tsx";
 import { HttpRequestNode } from "@/nodes/core/HttpRequestNode.tsx";
 import { MediaInputNode } from "@/nodes/core/MediaInputNode.tsx";
@@ -53,6 +60,7 @@ export const nodeTypes: Record<string, any> = {
   macroNode: MacroNode,
   macroInEdge: MacroPortNode,
   macroInParam: MacroPortNode,
+  macroInSettings: MacroPortNode,
   macroOutput: MacroPortNode,
   macroConnections: MacroConnectionsNode,
   folderInput: FolderInputNode,
@@ -64,6 +72,13 @@ export const nodeTypes: Record<string, any> = {
   reviewNode: ReviewNode,
   converter: ConverterNode,
   pollUntil: PollUntilNode,
+  textTemplate: TextTemplateNode,
+  switchNode: SwitchNode,
+  mergeNode: MergeNode,
+  stringOps: StringOpsNode,
+  counterNode: CounterNode,
+  commentNode: CommentNode,
+  chatNode: ChatNode,
   // Transformers.js
   transformersPipeline: PipelineNode,
   transformersModelLoader: ModelLoaderNode,
@@ -131,7 +146,7 @@ export const getNodeHandles = (
     handles.targets.push({ id: "img1", label: "IMAGE 1", offsetY: 100 });
     handles.targets.push({ id: "img2", label: "IMAGE 2", offsetY: 130 });
   } else if (
-    ["macroInEdge", "macroInParam", "macroConnections"].includes(node.type)
+    ["macroInEdge", "macroInParam", "macroInSettings", "macroConnections"].includes(node.type)
   ) {
     handles.sources.push({ id: "out", label: "OUT", offsetY: 50 });
   } else if (node.type === "macroOutput") {
@@ -170,14 +185,17 @@ export const getNodeHandles = (
     handles.targets.push({ id: "in", label: "IN", offsetY: 50 });
     handles.sources.push({ id: "out", label: "OUT", offsetY: 50 });
   } else if (node.type === "listAggregator") {
-    handles.targets.push({ id: "item", label: "ITEM", offsetY: 70 });
-    handles.sources.push({ id: "list", label: "LIST", offsetY: 70 });
+    handles.targets.push({ id: "item", label: "ITEM", offsetY: 60 });
+    handles.targets.push({ id: "name", label: "NAME", offsetY: 90 });
+    handles.sources.push({ id: "list", label: "LIST", offsetY: 75 });
   } else if (node.type === "downloadData") {
     handles.targets.push({ id: "in", label: "DATA", offsetY: 70 });
     handles.targets.push({ id: "name", label: "NAME", offsetY: 90 });
   } else if (node.type === "imageProcess") {
     handles.targets.push({ id: "image", label: "IMAGE", offsetY: 70 });
+    handles.targets.push({ id: "size", label: "SIZE", offsetY: 400 });
     handles.sources.push({ id: "out", label: "OUT", offsetY: 70 });
+    handles.sources.push({ id: "size", label: "SIZE", offsetY: 400 });
   } else if (node.type === "reviewNode") {
     handles.targets.push({ id: "in", label: "IN", offsetY: 70 });
     handles.sources.push({ id: "out", label: "OUT", offsetY: 70 });
@@ -189,6 +207,50 @@ export const getNodeHandles = (
     handles.targets.push({ id: "headers", label: "HEADERS", offsetY: 90 });
     handles.targets.push({ id: "resultUrl", label: "RESULT URL", offsetY: 120 });
     handles.sources.push({ id: "out", label: "OUT", offsetY: 90 });
+  } else if (node.type === "textTemplate") {
+    const inputs: string[] = node.data.inputs || ["var1", "var2"];
+    inputs.forEach((id: string, i: number) =>
+      handles.targets.push({
+        id,
+        label: id.toUpperCase(),
+        offsetY: 50 + i * 30,
+      }),
+    );
+    const outY = Math.max(
+      70,
+      50 + ((inputs.length > 0 ? inputs.length - 1 : 0) * 30) / 2,
+    );
+    handles.sources.push({ id: "out", label: "OUT", offsetY: outY });
+  } else if (node.type === "switchNode") {
+    handles.targets.push({ id: "in", label: "IN", offsetY: 70 });
+    handles.sources.push({ id: "true", label: "TRUE", offsetY: 60 });
+    handles.sources.push({ id: "false", label: "FALSE", offsetY: 100 });
+  } else if (node.type === "mergeNode") {
+    const inputs: string[] = node.data.inputs || ["in1", "in2"];
+    inputs.forEach((id: string, i: number) =>
+      handles.targets.push({
+        id,
+        label: id.toUpperCase(),
+        offsetY: 50 + i * 30,
+      }),
+    );
+    const outY = Math.max(
+      70,
+      50 + ((inputs.length > 0 ? inputs.length - 1 : 0) * 30) / 2,
+    );
+    handles.sources.push({ id: "out", label: "OUT", offsetY: outY });
+  } else if (node.type === "stringOps") {
+    handles.targets.push({ id: "in", label: "IN", offsetY: 70 });
+    handles.sources.push({ id: "out", label: "OUT", offsetY: 70 });
+  } else if (node.type === "counterNode") {
+    handles.targets.push({ id: "trigger", label: "TRIGGER", offsetY: 70 });
+    handles.sources.push({ id: "count", label: "COUNT", offsetY: 60 });
+    handles.sources.push({ id: "label", label: "LABEL", offsetY: 90 });
+  } else if (node.type === "commentNode") {
+    // No handles — comment nodes don't connect
+  } else if (node.type === "chatNode") {
+    handles.targets.push({ id: "left", label: "LEFT", offsetY: 60 });
+    handles.targets.push({ id: "right", label: "RIGHT", offsetY: 90 });
   }
   // --- Transformers.js nodes ---
   else if (node.type === "transformersPipeline") {

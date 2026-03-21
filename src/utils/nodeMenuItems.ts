@@ -25,32 +25,125 @@ export function getNodeMenuItems(currentView: string | null): MenuItem[] {
   items.push({ type: "inputText", label: "Text Input", category: "Inputs" });
   items.push({ type: "inputImage", label: "Image Input", category: "Inputs" });
   items.push({ type: "audioInput", label: "Audio Input", category: "Inputs" });
-  items.push({ type: "folderInput", label: "Folder Input", category: "Inputs" });
+  items.push({ type: "videoInput", label: "Video Input", category: "Inputs" });
+  items.push({
+    type: "folderInput",
+    label: "Folder Input",
+    category: "Inputs",
+  });
 
   // ── Outputs ──
-  items.push({ type: "universalOutput", label: "Universal Output", category: "Outputs" });
+  items.push({
+    type: "universalOutput",
+    label: "Universal Output",
+    category: "Outputs",
+  });
   items.push({ type: "outputText", label: "Text Output", category: "Outputs" });
-  items.push({ type: "outputImage", label: "Image Output", category: "Outputs" });
-  items.push({ type: "audioOutput", label: "Audio Output", category: "Outputs" });
-  items.push({ type: "downloadData", label: "Download Data", category: "Outputs" });
+  items.push({
+    type: "outputImage",
+    label: "Image Output",
+    category: "Outputs",
+  });
+  items.push({
+    type: "audioOutput",
+    label: "Audio Output",
+    category: "Outputs",
+  });
+  items.push({
+    type: "downloadData",
+    label: "Download Data",
+    category: "Outputs",
+  });
 
   // ── Processing ──
-  items.push({ type: "imageProcess", label: "Image Process", category: "Processing" });
+  items.push({
+    type: "textTemplate",
+    label: "Text Template",
+    category: "Processing",
+  });
+  items.push({
+    type: "stringOps",
+    label: "String Operations",
+    category: "Processing",
+  });
+  items.push({
+    type: "mergeNode",
+    label: "Merge / Zip",
+    category: "Processing",
+  });
+  items.push({
+    type: "imageProcess",
+    label: "Image Process",
+    category: "Processing",
+  });
   items.push({ type: "converter", label: "Converter", category: "Processing" });
-  items.push({ type: "customScript", label: "Custom Script", category: "Processing" });
-  items.push({ type: "httpRequest", label: "HTTP Request", category: "Processing" });
+  items.push({
+    type: "customScript",
+    label: "Custom Script",
+    category: "Processing",
+  });
+  items.push({
+    type: "httpRequest",
+    label: "HTTP Request",
+    category: "Processing",
+  });
   items.push({ type: "jsonPath", label: "JSON Path", category: "Processing" });
-  items.push({ type: "pollUntil", label: "Poll Until", category: "Processing" });
-  items.push({ type: "macroNode", label: "Macro (Sub-Graph)", category: "Processing" });
+  items.push({
+    type: "pollUntil",
+    label: "Poll Until",
+    category: "Processing",
+  });
+  items.push({
+    type: "macroNode",
+    label: "Macro (Sub-Graph)",
+    category: "Processing",
+  });
 
   // ── Flow Control — ordered by typical workflow sequence ──
-  items.push({ type: "batchIterator", label: "Batch Iterator", category: "Flow Control" });
+  items.push({
+    type: "batchIterator",
+    label: "Batch Iterator",
+    category: "Flow Control",
+  });
+  items.push({
+    type: "counterNode",
+    label: "Counter",
+    category: "Flow Control",
+  });
   items.push({ type: "delay", label: "Delay", category: "Flow Control" });
-  items.push({ type: "reviewNode", label: "Review / Approve", category: "Flow Control" });
-  items.push({ type: "listAggregator", label: "List Aggregator", category: "Flow Control" });
+  items.push({
+    type: "reviewNode",
+    label: "Review / Approve",
+    category: "Flow Control",
+  });
+  items.push({
+    type: "listAggregator",
+    label: "List Aggregator",
+    category: "Flow Control",
+  });
+  items.push({
+    type: "commentNode",
+    label: "Comment / Note",
+    category: "Flow Control",
+  });
+  items.push({
+    type: "chatNode",
+    label: "Chat Display",
+    category: "Flow Control",
+  });
+  items.push({
+    type: "switchNode",
+    label: "Switch / Router",
+    category: "Flow Control",
+  });
 
   // ── Pipelines — ready-to-use high-level macros ──
-  items.push({ type: "openRouter", label: "OpenRouter API", category: "Pipelines", subcategory: "LLM" });
+  items.push({
+    type: "openRouter",
+    label: "OpenRouter API",
+    category: "Pipelines",
+    subcategory: "LLM",
+  });
   for (const [cat, tasks] of Object.entries(PIPELINE_CATEGORIES)) {
     for (const task of tasks) {
       const key = `pipeline_${task}`;
@@ -81,24 +174,89 @@ export function getNodeMenuItems(currentView: string | null): MenuItem[] {
   }
 
   // ── Advanced — low-level Transformers.js building blocks ──
-  items.push({ type: "transformersPipeline", label: "Pipeline Node", category: "Advanced" });
-  items.push({ type: "transformersModelLoader", label: "Model Loader", category: "Advanced" });
-  items.push({ type: "transformersTokenizerLoader", label: "Tokenizer Loader", category: "Advanced" });
-  items.push({ type: "transformersProcessorLoader", label: "Processor Loader", category: "Advanced" });
-  items.push({ type: "transformersGenerate", label: "Generate", category: "Advanced" });
-  items.push({ type: "transformersTokenizerEncode", label: "Tokenizer Encode", category: "Advanced" });
-  items.push({ type: "transformersTokenizerDecode", label: "Tokenizer Decode", category: "Advanced" });
-  items.push({ type: "transformersProcessor", label: "Processor", category: "Advanced" });
-  items.push({ type: "transformersChatTemplate", label: "Chat Template", category: "Advanced" });
-  items.push({ type: "transformersEnvConfig", label: "Env Config", category: "Advanced" });
-  items.push({ type: "transformersGenerationConfig", label: "Generation Config", category: "Advanced" });
+  items.push({
+    type: "transformersPipeline",
+    label: "Pipeline Node",
+    category: "Advanced",
+  });
+  items.push({
+    type: "transformersModelLoader",
+    label: "Model Loader",
+    category: "Advanced",
+  });
+  items.push({
+    type: "transformersTokenizerLoader",
+    label: "Tokenizer Loader",
+    category: "Advanced",
+  });
+  items.push({
+    type: "transformersProcessorLoader",
+    label: "Processor Loader",
+    category: "Advanced",
+  });
+  items.push({
+    type: "transformersGenerate",
+    label: "Generate",
+    category: "Advanced",
+  });
+  items.push({
+    type: "transformersTokenizerEncode",
+    label: "Tokenizer Encode",
+    category: "Advanced",
+  });
+  items.push({
+    type: "transformersTokenizerDecode",
+    label: "Tokenizer Decode",
+    category: "Advanced",
+  });
+  items.push({
+    type: "transformersProcessor",
+    label: "Processor",
+    category: "Advanced",
+  });
+  items.push({
+    type: "transformersChatTemplate",
+    label: "Chat Template",
+    category: "Advanced",
+  });
+  items.push({
+    type: "transformersEnvConfig",
+    label: "Env Config",
+    category: "Advanced",
+  });
+  items.push({
+    type: "transformersGenerationConfig",
+    label: "Generation Config",
+    category: "Advanced",
+  });
 
   // ── Macro Internals — only visible inside a macro ──
   if (currentView) {
-    items.push({ type: "macroInEdge", label: "Macro In (Edge)", category: "Macro Internals" });
-    items.push({ type: "macroInParam", label: "Macro In (Param)", category: "Macro Internals" });
-    items.push({ type: "macroOutput", label: "Macro Out", category: "Macro Internals" });
-    items.push({ type: "macroConnections", label: "Macro Connections", category: "Macro Internals" });
+    items.push({
+      type: "macroInEdge",
+      label: "Macro In (Edge)",
+      category: "Macro Internals",
+    });
+    items.push({
+      type: "macroInParam",
+      label: "Macro In (Param)",
+      category: "Macro Internals",
+    });
+    items.push({
+      type: "macroInSettings",
+      label: "Macro In (Settings)",
+      category: "Macro Internals",
+    });
+    items.push({
+      type: "macroOutput",
+      label: "Macro Out",
+      category: "Macro Internals",
+    });
+    items.push({
+      type: "macroConnections",
+      label: "Macro Connections",
+      category: "Macro Internals",
+    });
   }
 
   return items;

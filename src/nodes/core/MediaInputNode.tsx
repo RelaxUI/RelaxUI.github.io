@@ -1,6 +1,14 @@
+import { MemoryPicker } from "@/components/MemoryPicker.tsx";
 import { RuntimeContext } from "@/context/RuntimeContext.ts";
+import type { MemoryItem } from "@/hooks/useMemory.ts";
 import { BaseNode } from "@/nodes/BaseNode.tsx";
-import { useContext, useState } from "react";
+import {
+  useCallback,
+  useContext,
+  useEffect,
+  useRef,
+  useState,
+} from "react";
 
 export const MediaInputNode = (props: any) => {
   const { updateNodeData, setFullscreenImage } = useContext(RuntimeContext)!;
@@ -13,26 +21,161 @@ export const MediaInputNode = (props: any) => {
         : "image");
   const isImage = mediaType === "image";
   const isVideo = mediaType === "video";
-  const [mode, setMode] = useState<"file" | "url">(
+  const isAudio = mediaType === "audio";
+  const [mode, setMode] = useState<"file" | "url" | "mic">(
     props.data.value?.startsWith("http") ? "url" : "file",
   );
   const hasValue = !!props.data.value;
 
+  // Microphone recording state
+  const [recording, setRecording] = useState(false);
+  const [recordingTime, setRecordingTime] = useState(0);
+  const mediaRecorderRef = useRef<MediaRecorder | null>(null);
+  const chunksRef = useRef<Blob[]>([]);
+  const timerRef = useRef<ReturnType<typeof setInterval> | null>(null);
+  const streamRef = useRef<MediaStream | null>(null);
+
+  // Audio orb visualization
+  const [audioLevel, setAudioLevel] = useState(0);
+  const analyserRef = useRef<AnalyserNode | null>(null);
+  const audioCtxRef = useRef<AudioContext | null>(null);
+  const animFrameRef = useRef<number>(0);
+
+  // Cleanup on unmount
+  useEffect(() => {
+    return () => {
+      if (timerRef.current) clearInterval(timerRef.current);
+      if (animFrameRef.current) cancelAnimationFrame(animFrameRef.current);
+      if (streamRef.current) {
+        streamRef.current.getTracks().forEach((t) => t.stop());
+      }
+      if (audioCtxRef.current) {
+        audioCtxRef.current.close();
+        audioCtxRef.current = null;
+      }
+    };
+  }, []);
+
+  const startRecording = useCallback(async () => {
+    try {
+      const stream = await navigator.mediaDevices.getUserMedia({ audio: true });
+      streamRef.current = stream;
+      chunksRef.current = [];
+
+      const mimeType = MediaRecorder.isTypeSupported("audio/webm;codecs=opus")
+        ? "audio/webm;codecs=opus"
+        : "audio/webm";
+      const recorder = new MediaRecorder(stream, { mimeType });
+      mediaRecorderRef.current = recorder;
+
+      recorder.ondataavailable = (e) => {
+        if (e.data.size > 0) chunksRef.current.push(e.data);
+      };
+
+      recorder.onstop = () => {
+        const blob = new Blob(chunksRef.current, { type: mimeType });
+        const reader = new FileReader();
+        reader.onload = (ev) => {
+          updateNodeData(props.id, "value", ev.target?.result);
+          updateNodeData(props.id, "fileName", "Microphone recording");
+        };
+        reader.readAsDataURL(blob);
+
+        stream.getTracks().forEach((t) => t.stop());
+        streamRef.current = null;
+        if (timerRef.current) {
+          clearInterval(timerRef.current);
+          timerRef.current = null;
+        }
+      };
+
+      recorder.start(250);
+      setRecording(true);
+      setRecordingTime(0);
+      timerRef.current = setInterval(
+        () => setRecordingTime((t) => t + 1),
+        1000,
+      );
+
+      // Set up AnalyserNode for orb visualization
+      try {
+        const actx = new AudioContext();
+        audioCtxRef.current = actx;
+        const source = actx.createMediaStreamSource(stream);
+        const analyser = actx.createAnalyser();
+        analyser.fftSize = 256;
+        source.connect(analyser);
+        analyserRef.current = analyser;
+        const dataArray = new Uint8Array(analyser.frequencyBinCount);
+        const tick = () => {
+          analyser.getByteFrequencyData(dataArray);
+          let sum = 0;
+          for (let j = 0; j < dataArray.length; j++) sum += dataArray[j]!;
+          setAudioLevel(sum / dataArray.length / 255);
+          animFrameRef.current = requestAnimationFrame(tick);
+        };
+        tick();
+      } catch {
+        // Audio context not supported — orb will just pulse
+      }
+    } catch {
+      // User denied microphone or not available
+    }
+  }, [props.id, updateNodeData]);
+
+  const stopRecording = useCallback(() => {
+    if (mediaRecorderRef.current?.state === "recording") {
+      mediaRecorderRef.current.stop();
+    }
+    if (animFrameRef.current) {
+      cancelAnimationFrame(animFrameRef.current);
+      animFrameRef.current = 0;
+    }
+    if (audioCtxRef.current) {
+      audioCtxRef.current.close();
+      audioCtxRef.current = null;
+    }
+    analyserRef.current = null;
+    setAudioLevel(0);
+    setRecording(false);
+  }, []);
+
+  const formatTime = (s: number) =>
+    `${Math.floor(s / 60)}:${String(s % 60).padStart(2, "0")}`;
+
+  const handleMemorySelect = useCallback(
+    (value: string, item: MemoryItem) => {
+      updateNodeData(props.id, "value", value);
+      updateNodeData(props.id, "fileName", item.name);
+    },
+    [props.id, updateNodeData],
+  );
+
+  const memoryTypes: MemoryItem["type"][] = isAudio
+    ? ["audio"]
+    : isVideo
+      ? ["video"]
+      : ["image"];
+
+  // Available modes for this media type
+  const modes = isAudio
+    ? (["file", "url", "mic"] as const)
+    : (["file", "url"] as const);
+
   return (
-    <BaseNode {...props}>
-      <div className="flex bg-(--relax-bg-primary)/60 rounded p-1 mb-2 border border-(--relax-border) shrink-0 w-full">
-        <button
-          onClick={() => setMode("file")}
-          className={`flex-1 text-[9px] font-bold rounded py-0.5 ${mode === "file" ? "bg-(--relax-accent) text-(--relax-bg-primary)" : "text-(--relax-text-muted) hover:text-white"}`}
-        >
-          FILE
-        </button>
-        <button
-          onClick={() => setMode("url")}
-          className={`flex-1 text-[9px] font-bold rounded py-0.5 ${mode === "url" ? "bg-(--relax-accent) text-(--relax-bg-primary)" : "text-(--relax-text-muted) hover:text-white"}`}
-        >
-          URL
-        </button>
+    <BaseNode {...props} headerExtra={<MemoryPicker types={memoryTypes} onSelect={handleMemorySelect} />}>
+      <div className="flex items-center gap-1 mb-2 shrink-0 w-full">
+        <div className="flex flex-1 bg-(--relax-bg-primary)/60 rounded p-1 border border-(--relax-border)">
+          {modes.map((m) => (
+            <button
+              key={m}
+              onClick={() => setMode(m)}
+              className={`flex-1 text-[9px] font-bold rounded py-0.5 ${mode === m ? "bg-(--relax-accent) text-(--relax-bg-primary)" : "text-(--relax-text-muted) hover:text-white"}`}
+            >
+              {m.toUpperCase()}
+            </button>
+          ))}
+        </div>
       </div>
 
       {mode === "url" && (
@@ -55,7 +198,45 @@ export const MediaInputNode = (props: any) => {
         className={`flex-1 w-full flex flex-col items-center justify-center border border-dashed border-(--relax-border) rounded bg-(--relax-bg-primary)/60 transition-colors ${hasValue ? (isImage || isVideo ? "min-h-35 border-none" : "border-none") : "hover:border-(--relax-accent)"}`}
       >
         {!hasValue ? (
-          mode === "file" ? (
+          mode === "mic" ? (
+            <div className="w-full min-h-25 flex flex-col items-center justify-center gap-2 p-3">
+              {recording ? (
+                <>
+                  <div
+                    className="rounded-full"
+                    style={{
+                      width: `${40 + audioLevel * 30}px`,
+                      height: `${40 + audioLevel * 30}px`,
+                      background: `radial-gradient(circle, ${
+                        audioLevel > 0.5
+                          ? `hsl(${280 - audioLevel * 40}, 100%, 65%)`
+                          : "#00FFD0"
+                      } 0%, rgba(0,229,255,0.15) 60%, transparent 100%)`,
+                      boxShadow: `0 0 ${12 + audioLevel * 25}px ${4 + audioLevel * 10}px rgba(0,255,208,${0.2 + audioLevel * 0.4})`,
+                      transition: "width 0.08s, height 0.08s, box-shadow 0.08s, background 0.15s",
+                      animation: audioLevel < 0.05 ? "orbPulse 2s ease-in-out infinite" : "none",
+                    }}
+                  />
+                  <span className="text-[10px] font-mono text-(--relax-text-muted)">
+                    {formatTime(recordingTime)}
+                  </span>
+                  <button
+                    onClick={stopRecording}
+                    className="px-4 py-1.5 rounded text-[9px] font-bold tracking-widest uppercase border bg-red-500/20 border-red-500/50 text-red-400 hover:bg-red-500/30 transition-colors cursor-pointer"
+                  >
+                    STOP
+                  </button>
+                </>
+              ) : (
+                <button
+                  onClick={startRecording}
+                  className="px-4 py-1.5 rounded text-[9px] font-bold tracking-widest uppercase border bg-(--relax-accent)/20 border-(--relax-accent)/50 text-(--relax-accent) hover:bg-(--relax-accent)/30 transition-colors cursor-pointer"
+                >
+                  RECORD
+                </button>
+              )}
+            </div>
+          ) : mode === "file" ? (
             <label className="w-full h-full min-h-25 flex flex-col items-center justify-center cursor-pointer">
               <span className="text-[10px] text-(--relax-text-muted) font-bold tracking-widest">
                 {isImage

@@ -1,3 +1,4 @@
+import { MemoryPicker } from "@/components/MemoryPicker.tsx";
 import { RuntimeContext } from "@/context/RuntimeContext.ts";
 import { BaseNode } from "@/nodes/BaseNode.tsx";
 import { useCallback, useContext, useEffect, useRef } from "react";
@@ -20,8 +21,16 @@ export const InputTextNode = (props: any) => {
     [props.id, updateNodeData],
   );
 
+  const handleMemorySelect = useCallback(
+    (value: string) => {
+      updateNodeData(props.id, "value", value);
+      if (textareaRef.current) textareaRef.current.value = value;
+    },
+    [props.id, updateNodeData],
+  );
+
   return (
-    <BaseNode {...props}>
+    <BaseNode {...props} headerExtra={<MemoryPicker types={["text"]} onSelect={handleMemorySelect} />}>
       <textarea
         ref={textareaRef}
         className="nowheel nodrag flex-1 w-full bg-(--relax-bg-primary)/60 border border-(--relax-border) rounded p-2 text-xs font-mono text-white focus:outline-none focus:border-(--relax-accent) resize-none custom-scrollbar"

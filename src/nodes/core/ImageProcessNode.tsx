@@ -70,6 +70,7 @@ export const ImageProcessNode = (props: any) => {
   const resolution = props.data.resolution || "1K";
   const cropAnchor = props.data.cropAnchor || "MC";
   const quality = props.data.quality ?? 95;
+  const roundTo8 = props.data.roundTo8 !== false;
 
   const dimensions = useMemo(
     () => getDimensions(aspectRatio, resolution),
@@ -145,8 +146,8 @@ export const ImageProcessNode = (props: any) => {
         <div className="flex items-center justify-center bg-(--relax-bg-primary)/60 border border-(--relax-border) rounded px-2 py-1.5">
           <span className="text-[10px] font-mono text-(--relax-accent)">
             {dimensions
-              ? `${dimensions[0]} x ${dimensions[1]}`
-              : "Original Size"}
+              ? `${dimensions[0]} x ${dimensions[1]} (${(dimensions[0] * dimensions[1] / 1_000_000).toFixed(1)}MP)`
+              : `Original \u2264 ${resolution === "4K" ? "16.0" : resolution === "2K" ? "4.0" : "1.0"}MP`}
           </span>
         </div>
 
@@ -173,32 +174,49 @@ export const ImageProcessNode = (props: any) => {
           </div>
         </div>
 
-        {/* Quality Slider */}
-        <div className="flex flex-col gap-1">
-          <div className="flex items-center justify-between">
-            <label className="text-[9px] font-bold tracking-widest text-(--relax-text-muted) uppercase">
-              Quality
-            </label>
-            <span className="text-[9px] font-mono text-(--relax-accent)">
-              {quality}
-            </span>
-          </div>
+        {/* Round to 8 */}
+        <label className="flex items-center gap-2 cursor-pointer">
           <input
-            type="range"
-            min={1}
-            max={100}
-            step={1}
-            value={quality}
+            type="checkbox"
+            checked={roundTo8}
             onChange={(e) =>
-              updateNodeData(props.id, "quality", Number(e.target.value))
+              updateNodeData(props.id, "roundTo8", e.target.checked)
             }
-            className="w-full h-1.5 rounded-full appearance-none cursor-pointer accent-(--relax-accent) bg-(--relax-border)"
+            className="accent-(--relax-accent)"
           />
-          <div className="flex justify-between text-[7px] text-(--relax-text-muted) font-mono">
-            <span>1</span>
-            <span>100</span>
+          <span className="text-[9px] font-bold tracking-widest text-(--relax-text-muted) uppercase">
+            Round to 8
+          </span>
+        </label>
+
+        {/* Quality Slider — only for lossy formats (JPG, WebP) */}
+        {(format === "jpg" || format === "webp") && (
+          <div className="flex flex-col gap-1">
+            <div className="flex items-center justify-between">
+              <label className="text-[9px] font-bold tracking-widest text-(--relax-text-muted) uppercase">
+                Quality
+              </label>
+              <span className="text-[9px] font-mono text-(--relax-accent)">
+                {quality}
+              </span>
+            </div>
+            <input
+              type="range"
+              min={1}
+              max={100}
+              step={1}
+              value={quality}
+              onChange={(e) =>
+                updateNodeData(props.id, "quality", Number(e.target.value))
+              }
+              className="w-full h-1.5 rounded-full appearance-none cursor-pointer accent-(--relax-accent) bg-(--relax-border)"
+            />
+            <div className="flex justify-between text-[7px] text-(--relax-text-muted) font-mono">
+              <span>1</span>
+              <span>100</span>
+            </div>
           </div>
-        </div>
+        )}
       </div>
     </BaseNode>
   );

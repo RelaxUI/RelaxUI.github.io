@@ -38,7 +38,7 @@ export const LabeledHandle = ({
       type={type}
       position={position}
       id={id}
-      className={`custom-handle bg-(--relax-accent)! border-0! shadow-[0_0_8px_var(--relax-accent)]! transition-transform z-20! group/handle cursor-crosshair`}
+      className={`custom-handle border-0! shadow-[0_0_8px_var(--relax-accent)]! transition-transform z-20! group/handle cursor-crosshair`}
       style={{ top: offsetY }}
     >
       <div

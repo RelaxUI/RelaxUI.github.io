@@ -119,6 +119,34 @@ export const PIPELINE_TASKS: Record<string, PipelineTaskDef> = {
     visualization: "bar-chart",
   },
 
+  "text2text-generation": {
+    label: "Text-to-Text Generation",
+    category: "NLP",
+    description:
+      "Encoder-decoder generation for tasks like translation, summarization, and paraphrasing (T5/BART-style).",
+    defaultModel: "Xenova/flan-t5-small",
+    inputs: [{ id: "text", label: "TEXT", type: "string", required: true }],
+    outputs: [
+      { id: "result", label: "RESULT", type: "json" },
+      { id: "generated_text", label: "GENERATED TEXT", type: "string" },
+    ],
+    visualization: "side-by-side",
+  },
+
+  "sentence-similarity": {
+    label: "Sentence Similarity",
+    category: "NLP",
+    description:
+      "Compute similarity between sentences using embeddings and cosine similarity.",
+    defaultModel: "Xenova/all-MiniLM-L6-v2",
+    inputs: [
+      { id: "text", label: "SENTENCE 1", type: "string", required: true },
+      { id: "context", label: "SENTENCE 2", type: "string", required: true },
+    ],
+    outputs: [{ id: "result", label: "RESULT", type: "json" }],
+    visualization: "bar-chart",
+  },
+
   "feature-extraction": {
     label: "Feature Extraction",
     category: "NLP",
@@ -337,8 +365,10 @@ export const PIPELINE_CATEGORIES: Record<string, string[]> = {
     "fill-mask",
     "summarization",
     "text-generation",
+    "text2text-generation",
     "translation",
     "zero-shot-classification",
+    "sentence-similarity",
     "feature-extraction",
   ],
   Vision: [

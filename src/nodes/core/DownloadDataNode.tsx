@@ -50,6 +50,9 @@ function detectDataType(data: any): DataType {
   if (Array.isArray(data)) {
     if (data.length > 0 && isMediaUrl(data[0])) return "media";
     if (data.length > 0 && data[0] instanceof Blob) return "media";
+    // Named entries {name, data} should be treated as array (offers ZIP), not tabular
+    if (data.length > 0 && typeof data[0] === "object" && !Array.isArray(data[0]) && "name" in data[0] && "data" in data[0])
+      return "array";
     if (data.length > 0 && typeof data[0] === "object" && !Array.isArray(data[0]) && !isDataUrl(data[0]) && !isBlobUrl(data[0]))
       return "tabular";
     return "array";
@@ -98,6 +101,7 @@ async function convertImage(src: string | Blob, targetFormat: string): Promise<B
   const url = src instanceof Blob ? URL.createObjectURL(src) : src;
   try {
     const img = new Image();
+    img.crossOrigin = "anonymous";
     await new Promise<void>((resolve, reject) => {
       img.onload = () => resolve();
       img.onerror = reject;
@@ -160,16 +164,21 @@ export const DownloadDataNode = (props: any) => {
         const JSZip = (await import("jszip")).default;
         const zip = new JSZip();
         for (let i = 0; i < data.length; i++) {
-          const item = data[i];
-          if (isMediaUrl(item)) {
-            const { blob, mime } = await resolveUrl(item);
-            zip.file(`item-${i}.${extFromMime(mime)}`, blob);
-          } else if (item instanceof Blob) {
-            zip.file(`item-${i}.${extFromMime(item.type)}`, item);
-          } else if (typeof item === "string") {
-            zip.file(`item-${i}.txt`, item);
+          const raw = data[i];
+          // Detect {name, data} named entries
+          const isNamed = raw && typeof raw === "object" && "name" in raw && "data" in raw;
+          const content = isNamed ? raw.data : raw;
+          const entryName = isNamed ? raw.name : null;
+
+          if (isMediaUrl(content)) {
+            const { blob, mime } = await resolveUrl(content);
+            zip.file(entryName || `item-${i}.${extFromMime(mime)}`, blob);
+          } else if (content instanceof Blob) {
+            zip.file(entryName || `item-${i}.${extFromMime(content.type)}`, content);
+          } else if (typeof content === "string") {
+            zip.file(entryName || `item-${i}.txt`, content);
           } else {
-            zip.file(`item-${i}.json`, JSON.stringify(item, null, 2));
+            zip.file(entryName || `item-${i}.json`, JSON.stringify(content, null, 2));
           }
         }
         const zipBlob = await zip.generateAsync({ type: "blob" });
@@ -234,7 +243,7 @@ export const DownloadDataNode = (props: any) => {
 
         {isArray && (
           <div className="text-[9px] text-(--relax-text-muted) font-mono">
-            {data.length} items
+            {data.length} items{data.some((d: any) => d && typeof d === "object" && "name" in d && "data" in d) ? " (named)" : ""}
           </div>
         )}
 
@@ -245,7 +254,7 @@ export const DownloadDataNode = (props: any) => {
         >
           {downloading
             ? "DOWNLOADING..."
-            : `DOWNLOAD ${currentFormat.toUpperCase()}`}
+            : data ? `DOWNLOAD ${currentFormat.toUpperCase()}` : "DOWNLOAD"}
         </button>
       </div>
     </BaseNode>

@@ -1,4 +1,5 @@
 import { LabeledHandle } from "@/components/LabeledHandle.tsx";
+import { NodeErrorBoundary } from "@/components/NodeErrorBoundary.tsx";
 import { NODE_DIMENSIONS } from "@/config/nodeDimensions.ts";
 import { RuntimeContext } from "@/context/RuntimeContext.ts";
 import { getNodeHandles } from "@/nodes/registry.ts";
@@ -11,6 +12,7 @@ interface BaseNodeProps {
   data: Record<string, any>;
   children?: React.ReactNode;
   selected?: boolean;
+  headerExtra?: React.ReactNode;
 }
 
 export const BaseNode = ({
@@ -19,6 +21,7 @@ export const BaseNode = ({
   data,
   children,
   selected,
+  headerExtra,
 }: BaseNodeProps) => {
   const {
     computingNodes,
@@ -34,7 +37,7 @@ export const BaseNode = ({
   const { zoom } = useViewport();
 
   const isZoomedOut = zoom < 0.8;
-  const dims = NODE_DIMENSIONS[type]!;
+  const dims = NODE_DIMENSIONS[type] ?? { w: 220, h: 140, title: type?.toUpperCase() ?? "NODE", sub: "" };
   const node = { id, type, data };
   const handles = getNodeHandles(node as any, globalNodes);
 
@@ -44,7 +47,9 @@ export const BaseNode = ({
       globalNodes.some((n) => n.macroId === id && computingNodes.has(n.id)));
   const isError = !!nodeErrors[id];
   const isMacro = type === "macroNode";
-  const isImageNode = type === "inputImage" || type === "outputImage";
+  const hasMacroChildError =
+    isMacro &&
+    globalNodes.some((n) => n.macroId === id && !!nodeErrors[n.id]);
   const isLoading = modelLoadingState[id]?.status === "loading";
   const execTime = executionTimes[id];
 
@@ -52,6 +57,10 @@ export const BaseNode = ({
   if (type === "customScript") {
     const inputCount = (data.inputs || ["in1", "in2", "in3", "in4"]).length;
     dynamicHeight = Math.max(dims.h, 60 + inputCount * 35 + 30);
+  } else if (type === "textTemplate" || type === "mergeNode") {
+    const defaultInputs = type === "textTemplate" ? ["var1", "var2"] : ["in1", "in2"];
+    const inputCount = (data.inputs || defaultInputs).length;
+    dynamicHeight = Math.max(dims.h, 60 + inputCount * 30 + 30);
   }
 
   // User-defined dimensions override defaults
@@ -112,8 +121,10 @@ export const BaseNode = ({
       ref={nodeRef}
       className={`relative bg-[linear-gradient(to_bottom,var(--relax-accent-dark),transparent)] border transition-all duration-300 rounded-xl flex flex-col z-10 group
         ${
-          isError
-            ? "border-red-500 shadow-[0_0_20px_rgba(239,68,68,0.4)]"
+          isError || hasMacroChildError
+            ? hasMacroChildError && isComputing
+              ? "computing-node-error"
+              : "border-red-500 shadow-[0_0_20px_rgba(239,68,68,0.4)]"
             : isComputing || isLoading
               ? "computing-node shadow-[0_0_25px_rgba(0,255,170,0.4)]"
               : selected
@@ -196,6 +207,7 @@ export const BaseNode = ({
           {data.label || dims.title}
         </span>
         <div className="flex items-center gap-2 shrink-0">
+          {headerExtra && <div className="nodrag">{headerExtra}</div>}
           {execTime !== undefined && !isComputing && (
             <span className="text-[8px] text-(--relax-success) font-mono opacity-70">
               {execTime >= 1000
@@ -210,7 +222,7 @@ export const BaseNode = ({
       </div>
 
       <div className="p-3 flex-1 flex flex-col relative overflow-hidden nodrag">
-        {children}
+        <NodeErrorBoundary nodeId={id}>{children}</NodeErrorBoundary>
       </div>
 
       {isError && (

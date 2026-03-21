@@ -11,9 +11,25 @@ const SUFFIX_TO_DTYPE: Record<string, string> = {
   quantized: "q8",
 };
 
-/** Simple in-memory cache for HuggingFace file-tree responses. */
+/** HuggingFace file-tree cache: in-memory backed by sessionStorage, 1-hour TTL. */
+const _TREE_TTL = 60 * 60_000; // 1 hour
+const _STORAGE_PREFIX = "relaxui_hf_tree_";
 const _treeCache = new Map<string, { data: any[]; ts: number }>();
-const _TREE_TTL = 5 * 60_000;
+
+// Hydrate in-memory cache from sessionStorage on load
+try {
+  for (let i = 0; i < sessionStorage.length; i++) {
+    const key = sessionStorage.key(i);
+    if (key?.startsWith(_STORAGE_PREFIX)) {
+      const entry = JSON.parse(sessionStorage.getItem(key)!);
+      if (entry && Date.now() - entry.ts < _TREE_TTL) {
+        _treeCache.set(key.slice(_STORAGE_PREFIX.length), entry);
+      } else {
+        sessionStorage.removeItem(key);
+      }
+    }
+  }
+} catch { /* sessionStorage unavailable */ }
 
 /**
  * Prefer merged model variants over non-merged when both exist,
@@ -59,7 +75,9 @@ export class ModelRegistry {
     );
     if (!res.ok) return null;
     const data = await res.json();
-    _treeCache.set(modelId, { data, ts: Date.now() });
+    const entry = { data, ts: Date.now() };
+    _treeCache.set(modelId, entry);
+    try { sessionStorage.setItem(_STORAGE_PREFIX + modelId, JSON.stringify(entry)); } catch { /* quota */ }
     return data;
   }
 

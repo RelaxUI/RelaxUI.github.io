@@ -65,7 +65,7 @@ export const openRouter: MacroDefinition = {
         id: generateId("n"),
         type: "inputText",
         macroId: mId,
-        position: { x: 400, y: 240 },
+        position: { x: 400, y: 260 },
         data: {
           value: "https://openrouter.ai/api/v1/chat/completions",
           label: "URL",
@@ -75,7 +75,7 @@ export const openRouter: MacroDefinition = {
         id: generateId("n"),
         type: "customScript",
         macroId: mId,
-        position: { x: 400, y: 400 },
+        position: { x: 400, y: 440 },
         data: {
           script:
             'return JSON.stringify({\n  "Authorization": "Bearer " + in1,\n  "Content-Type": "application/json"\n});',
@@ -86,7 +86,7 @@ export const openRouter: MacroDefinition = {
         id: generateId("n"),
         type: "customScript",
         macroId: mId,
-        position: { x: 400, y: 650 },
+        position: { x: 400, y: 710 },
         data: {
           script:
             'const payload = {\n  model: in1,\n  modalities: in4 && in4.length > 0 ? in4 : ["text"],\n  stream: true,\n  messages:[{\n    role: "user",\n    content: in2 ?[\n      { type: "text", text: in3 },\n      { type: "image_url", image_url: { url: in2 } }\n    ] :[{ type: "text", text: in3 }]\n  }]\n};\nreturn JSON.stringify(payload);',

@@ -3,12 +3,75 @@ import { GENERATION_PARAMS } from "@/config/generationDefaults.ts";
 import { PIPELINE_TASKS } from "@/config/pipelineRegistry.ts";
 import type { GraphRunner } from "@/engine/GraphRunner.ts";
 import type { FlowNode } from "@/types.ts";
+import { blobToDataUrl, fetchAsDataUrl } from "@/utils/dataUrl.ts";
 
 // Caches to avoid reloading models/pipelines
 const pipelineCache = new Map<string, Promise<any>>();
 const modelCache = new Map<string, Promise<any>>();
 const tokenizerCache = new Map<string, Promise<any>>();
 const processorCache = new Map<string, Promise<any>>();
+
+/** Clear all model/pipeline caches to free memory */
+export function clearModelCaches() {
+  pipelineCache.clear();
+  modelCache.clear();
+  tokenizerCache.clear();
+  processorCache.clear();
+}
+
+/** Get the number of cached entries across all in-memory caches */
+export function getModelCacheStats() {
+  return {
+    pipelines: pipelineCache.size,
+    models: modelCache.size,
+    tokenizers: tokenizerCache.size,
+    processors: processorCache.size,
+    total: pipelineCache.size + modelCache.size + tokenizerCache.size + processorCache.size,
+  };
+}
+
+/** Stats from the browser's persistent Cache Storage (survives page refresh) */
+export interface BrowserCacheStats {
+  cacheNames: string[];
+  totalEntries: number;
+  estimatedBytes: number;
+}
+
+/** Query the browser Cache Storage for downloaded model files */
+export async function getBrowserCacheStats(): Promise<BrowserCacheStats> {
+  const result: BrowserCacheStats = { cacheNames: [], totalEntries: 0, estimatedBytes: 0 };
+  if (typeof caches === "undefined") return result;
+  try {
+    const names = await caches.keys();
+    result.cacheNames = names;
+    for (const name of names) {
+      const cache = await caches.open(name);
+      const keys = await cache.keys();
+      result.totalEntries += keys.length;
+    }
+    // Use StorageManager estimate if available
+    if (navigator.storage?.estimate) {
+      const est = await navigator.storage.estimate();
+      result.estimatedBytes = est.usage ?? 0;
+    }
+  } catch { /* Cache API may not be available */ }
+  return result;
+}
+
+/** Clear all browser Cache Storage entries (downloaded model files) */
+export async function clearBrowserCache(): Promise<void> {
+  if (typeof caches === "undefined") return;
+  try {
+    const names = await caches.keys();
+    await Promise.all(names.map((n) => caches.delete(n)));
+  } catch { /* Cache API may not be available */ }
+}
+
+/** Clear both in-memory model instances and persistent browser cache */
+export async function clearAllCaches(): Promise<void> {
+  clearModelCaches();
+  await clearBrowserCache();
+}
 
 /** Apply HF access token from settings before any model load */
 async function applyHfToken() {
@@ -105,13 +168,9 @@ async function rawPixelsToDataUrl(raw: any): Promise<string> {
 
   const canvas = new OffscreenCanvas(w, h);
   const ctx2d = canvas.getContext("2d")!;
-  ctx2d.putImageData(new ImageData(rgba, w, h), 0, 0);
+  ctx2d.putImageData(new ImageData(new Uint8ClampedArray(rgba.buffer as ArrayBuffer), w, h), 0, 0);
   const blob = await canvas.convertToBlob({ type: "image/png" });
-  return new Promise<string>((resolve) => {
-    const reader = new FileReader();
-    reader.onloadend = () => resolve(reader.result as string);
-    reader.readAsDataURL(blob);
-  });
+  return blobToDataUrl(blob);
 }
 
 /** Convert a depth tensor (float values) to a grayscale data URL */
@@ -141,13 +200,9 @@ async function depthTensorToDataUrl(tensor: any): Promise<string | undefined> {
 
     const canvas = new OffscreenCanvas(w, h);
     const ctx2d = canvas.getContext("2d")!;
-    ctx2d.putImageData(new ImageData(rgba, w, h), 0, 0);
+    ctx2d.putImageData(new ImageData(new Uint8ClampedArray(rgba.buffer as ArrayBuffer), w, h), 0, 0);
     const blob = await canvas.convertToBlob({ type: "image/png" });
-    return new Promise<string>((resolve) => {
-      const reader = new FileReader();
-      reader.onloadend = () => resolve(reader.result as string);
-      reader.readAsDataURL(blob);
-    });
+    return blobToDataUrl(blob);
   } catch {
     return undefined;
   }
@@ -202,9 +257,18 @@ export async function pipelineExecutor(
     if (inputs.tgt_lang) kwargs.tgt_lang = inputs.tgt_lang;
     if (inputs.threshold) kwargs.threshold = parseFloat(inputs.threshold);
 
-    // For question-answering, the API expects (question, context)
+    // For sentence-similarity, compute embeddings + cosine similarity
     let result;
-    if (task === "question-answering") {
+    if (task === "sentence-similarity") {
+      const emb1 = await pipe(inputs.text, { pooling: "mean", normalize: true });
+      const emb2 = await pipe(inputs.context, { pooling: "mean", normalize: true });
+      const v1 = Array.from(emb1.data as ArrayLike<number>);
+      const v2 = Array.from(emb2.data as ArrayLike<number>);
+      let dot = 0;
+      for (let i = 0; i < v1.length; i++) dot += (v1[i] ?? 0) * (v2[i] ?? 0);
+      const similarity = Math.max(-1, Math.min(1, dot));
+      result = [{ label: "Similarity", score: similarity }];
+    } else if (task === "question-answering") {
       result = await pipe(inputs.question, inputs.context);
     } else if (
       task === "zero-shot-classification" ||
@@ -330,7 +394,6 @@ export async function pipelineExecutor(
       data: processedResult,
     };
     ctx.pushValue(node.id, "result", envelope);
-    ctx.setRunStatus("COMPLETED");
   } catch (err) {
     pipelineCache.delete(cacheKey);
     throw err;
@@ -513,7 +576,6 @@ export async function generateExecutor(
   });
 
   ctx.pushValue(node.id, "generated_ids", outputs);
-  ctx.setRunStatus("COMPLETED");
 }
 
 export async function tokenizerEncodeExecutor(
@@ -577,9 +639,12 @@ export async function processorExecutor(
         globalThis.AudioContext ||
         (globalThis as any).webkitAudioContext
       )({ sampleRate: node.data.sampleRate || DEFAULTS.audioSampleRate });
-      const audioBuffer = await audioCtx.decodeAudioData(arrayBuffer);
-      audioData = audioBuffer.getChannelData(0);
-      await audioCtx.close();
+      try {
+        const audioBuffer = await audioCtx.decodeAudioData(arrayBuffer);
+        audioData = audioBuffer.getChannelData(0);
+      } finally {
+        await audioCtx.close();
+      }
     }
     args.push(audioData);
   }
@@ -598,7 +663,11 @@ export async function chatTemplateExecutor(
 
   let messages = inputs.messages;
   if (typeof messages === "string") {
-    messages = JSON.parse(messages);
+    try {
+      messages = JSON.parse(messages);
+    } catch {
+      throw new Error("Chat Template: messages input is not valid JSON");
+    }
   }
 
   const options: Record<string, any> = {
@@ -651,15 +720,7 @@ export async function audioInputExecutor(
   let val = node.data.value;
   if (val && (val.startsWith("http://") || val.startsWith("https://"))) {
     try {
-      const res = await fetch(val);
-      if (!res.ok) throw new Error(`HTTP Error: ${res.status}`);
-      const blob = await res.blob();
-      val = await new Promise((resolve, reject) => {
-        const reader = new FileReader();
-        reader.onloadend = () => resolve(reader.result as string);
-        reader.onerror = reject;
-        reader.readAsDataURL(blob);
-      });
+      val = await fetchAsDataUrl(val);
     } catch (err: any) {
       throw new Error(
         `Failed to fetch audio from URL: ${err.message}. (Check CORS policies)`,
@@ -690,7 +751,6 @@ export async function modelCallExecutor(
   const tensorInputs = inputs.tensors || {};
   const outputs = await model(tensorInputs);
   ctx.pushValue(node.id, "outputs", outputs);
-  ctx.setRunStatus("COMPLETED");
 }
 
 /* ── Post-Process Call Executor ──────────────────────────────────────── */
@@ -910,5 +970,4 @@ export async function postProcessCallExecutor(
   }
 
   ctx.pushValue(node.id, "result", result);
-  ctx.setRunStatus("COMPLETED");
 }

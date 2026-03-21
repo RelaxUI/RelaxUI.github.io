@@ -6,6 +6,8 @@ export interface AppSettings {
   autoSave: boolean;
   autoSaveDebounceMs: number;
   undoHistorySize: number;
+  debugMode: boolean;
+  macroSettings: Record<string, string>;
 }
 
 const STORAGE_KEY = "relaxui_settings";
@@ -16,6 +18,8 @@ const DEFAULT_SETTINGS: AppSettings = {
   autoSave: false,
   autoSaveDebounceMs: 1500,
   undoHistorySize: 50,
+  debugMode: false,
+  macroSettings: {},
 };
 
 let listeners: (() => void)[] = [];

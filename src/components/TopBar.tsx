@@ -7,16 +7,17 @@ interface TopBarProps {
   breadcrumbs: FlowNode[];
   runStatus: string;
   runFlow: () => void;
+  stopFlow: () => void;
   exportFlow: () => void;
   openImport: () => void;
   clearWorkflow: () => void;
-  resetToDefault: () => void;
   undo: () => void;
   redo: () => void;
   canUndo: boolean;
   canRedo: boolean;
   openSettings: () => void;
   openNodePicker: () => void;
+  validateWorkflow: () => void;
 }
 
 export function TopBar({
@@ -25,16 +26,17 @@ export function TopBar({
   breadcrumbs,
   runStatus,
   runFlow,
+  stopFlow,
   exportFlow,
   openImport,
   clearWorkflow,
-  resetToDefault,
   undo,
   redo,
   canUndo,
   canRedo,
   openSettings,
   openNodePicker,
+  validateWorkflow,
 }: TopBarProps) {
   const [menuOpen, setMenuOpen] = useState(false);
   const [confirmAction, setConfirmAction] = useState<string | null>(null);
@@ -58,19 +60,13 @@ export function TopBar({
     (action: string) => {
       if (confirmAction === action) {
         if (action === "clear") clearWorkflow();
-        else if (action === "reset") resetToDefault();
-        else if (action === "cache") {
-          import("@/utils/modelRegistry.ts").then(({ ModelRegistry }) =>
-            ModelRegistry.clear_cache_all(),
-          );
-        }
         setConfirmAction(null);
         setMenuOpen(false);
       } else {
         setConfirmAction(action);
       }
     },
-    [confirmAction, clearWorkflow, resetToDefault],
+    [confirmAction, clearWorkflow],
   );
 
   /** Navigate up one level in the macro breadcrumb hierarchy */
@@ -199,7 +195,10 @@ export function TopBar({
         <div className="relative" ref={menuRef}>
           <button
             onClick={() => {
-              setMenuOpen((v) => !v);
+              setMenuOpen((v) => {
+                if (v) setConfirmAction(null);
+                return !v;
+              });
               setConfirmAction(null);
             }}
             className={`flex items-center gap-1.5 px-2 sm:px-3 py-1.5 bg-(--relax-border) border rounded-md transition-all text-[10px] font-bold tracking-wider shadow-lg ${menuOpen ? "border-(--relax-accent) text-(--relax-accent)" : "border-(--relax-border-hover) text-(--relax-text-muted) hover:text-(--relax-accent) hover:border-(--relax-accent)"}`}
@@ -252,27 +251,21 @@ export function TopBar({
               >
                 EXPORT WORKFLOW
               </button>
+              <button
+                onClick={() => { validateWorkflow(); setMenuOpen(false); }}
+                className={menuItemClass}
+              >
+                VALIDATE WORKFLOW
+              </button>
 
               <div className="border-t border-(--relax-border) my-1" />
 
               {/* Destructive — two-click confirm */}
               <button
-                onClick={() => handleDangerAction("cache")}
-                className={dangerItemClass}
-              >
-                {confirmAction === "cache" ? "CONFIRM CLEAR CACHE?" : "CLEAR MODEL CACHE"}
-              </button>
-              <button
                 onClick={() => handleDangerAction("clear")}
                 className={dangerItemClass}
               >
                 {confirmAction === "clear" ? "CONFIRM CLEAR?" : "CLEAR WORKFLOW"}
-              </button>
-              <button
-                onClick={() => handleDangerAction("reset")}
-                className={dangerItemClass}
-              >
-                {confirmAction === "reset" ? "CONFIRM RESET?" : "RESET TO DEFAULT"}
               </button>
             </div>
           )}
@@ -291,20 +284,30 @@ export function TopBar({
           <span>SETTINGS</span>
         </button>
 
-        {/* Run */}
-        <button
-          onClick={runFlow}
-          disabled={isRunning}
-          className={`group flex items-center gap-1.5 sm:gap-3 px-2.5 sm:px-5 py-1.5 sm:py-2 border rounded-full transition-all duration-300 shadow-lg select-none ml-0.5 sm:ml-2 ${isRunning ? "border-(--relax-accent)/30 bg-(--relax-accent)/10 text-(--relax-accent) cursor-wait" : "border-(--relax-accent) bg-transparent text-(--relax-accent) hover:bg-(--relax-accent) hover:text-(--relax-bg-primary) hover:shadow-[0_0_15px_rgba(0,229,255,0.5)] cursor-pointer"}`}
-          title="Run (Ctrl+Enter)"
-        >
-          <div
-            className={`w-2 h-2 rounded-full shrink-0 transition-colors ${isRunning ? "bg-(--relax-accent) animate-pulse shadow-[0_0_8px_var(--relax-accent)]" : runStatus === "COMPLETED" ? "bg-(--relax-success)" : runStatus === "ERROR" ? "bg-red-500" : "bg-current"}`}
-          />
-          <b className="tracking-widest mt-px text-[10px] sm:text-xs">
-            {isRunning ? "RUN..." : "RUN"}
-          </b>
-          {!isRunning && (
+        {/* Run / Stop */}
+        {isRunning ? (
+          <button
+            onClick={stopFlow}
+            className="group flex items-center gap-1.5 sm:gap-3 px-2.5 sm:px-5 py-1.5 sm:py-2 border border-(--relax-text-muted) bg-transparent text-(--relax-text-muted) hover:bg-(--relax-text-muted)/15 hover:text-white hover:border-(--relax-text-default) rounded-full transition-all duration-300 shadow-lg select-none ml-0.5 sm:ml-2 cursor-pointer"
+            title="Stop"
+          >
+            <div className="w-2 h-2 rounded-sm shrink-0 bg-current" />
+            <b className="tracking-widest mt-px text-[10px] sm:text-xs">
+              STOP
+            </b>
+          </button>
+        ) : (
+          <button
+            onClick={runFlow}
+            className={`group flex items-center gap-1.5 sm:gap-3 px-2.5 sm:px-5 py-1.5 sm:py-2 border rounded-full transition-all duration-300 shadow-lg select-none ml-0.5 sm:ml-2 border-(--relax-accent) bg-transparent text-(--relax-accent) hover:bg-(--relax-accent) hover:text-(--relax-bg-primary) hover:shadow-[0_0_15px_rgba(0,229,255,0.5)] cursor-pointer`}
+            title="Run (Ctrl+Enter)"
+          >
+            <div
+              className={`w-2 h-2 rounded-full shrink-0 transition-colors ${runStatus === "COMPLETED" ? "bg-(--relax-success)" : runStatus === "ERROR" ? "bg-red-500" : "bg-current"}`}
+            />
+            <b className="tracking-widest mt-px text-[10px] sm:text-xs">
+              RUN
+            </b>
             <svg
               className="w-3.5 h-3.5 ml-1 opacity-80 group-hover:opacity-100 group-hover:translate-x-0.5 transition-all hidden sm:block"
               viewBox="0 0 24 24"
@@ -312,8 +315,8 @@ export function TopBar({
             >
               <path d="M8 5v14l11-7z" />
             </svg>
-          )}
-        </button>
+          </button>
+        )}
       </div>
     </div>
   );

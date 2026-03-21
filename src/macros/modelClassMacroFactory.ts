@@ -73,7 +73,7 @@ function createModelClassMacro(className: string): MacroDefinition {
           ? "transformersProcessorLoader"
           : "transformersTokenizerLoader",
         macroId: mId,
-        position: { x: 350, y: 340 },
+        position: { x: 350, y: 440 },
         data: { model_id: "" },
       });
 
@@ -114,7 +114,7 @@ function createModelClassMacro(className: string): MacroDefinition {
             ? "transformersProcessor"
             : "transformersTokenizerEncode",
           macroId: mId,
-          position: { x: 350, y: 560 },
+          position: { x: 350, y: 740 },
           data: {},
         });
 
@@ -171,7 +171,7 @@ function createModelClassMacro(className: string): MacroDefinition {
           id: decodeId,
           type: "transformersTokenizerDecode",
           macroId: mId,
-          position: { x: 1050, y: 120 },
+          position: { x: 1070, y: 120 },
           data: { skip_special_tokens: true },
         });
 
@@ -201,7 +201,7 @@ function createModelClassMacro(className: string): MacroDefinition {
           id: textOutId,
           type: "macroOutput",
           macroId: mId,
-          position: { x: 1350, y: 120 },
+          position: { x: 1420, y: 120 },
           data: { param: "text" },
         });
         edges.push({
@@ -218,7 +218,7 @@ function createModelClassMacro(className: string): MacroDefinition {
           id: streamOutId,
           type: "macroOutput",
           macroId: mId,
-          position: { x: 1350, y: 300 },
+          position: { x: 1420, y: 300 },
           data: { param: "stream" },
         });
         edges.push({
@@ -239,7 +239,7 @@ function createModelClassMacro(className: string): MacroDefinition {
             ? "transformersProcessor"
             : "transformersTokenizerEncode",
           macroId: mId,
-          position: { x: 350, y: 560 },
+          position: { x: 350, y: 740 },
           data: {},
         });
 
@@ -295,7 +295,7 @@ function createModelClassMacro(className: string): MacroDefinition {
           id: postProcessId,
           type: "transformersPostProcessCall",
           macroId: mId,
-          position: { x: 1050, y: 120 },
+          position: { x: 1070, y: 120 },
           data: {
             postProcessCategory: classDef.postProcessCategory || "base",
           },
@@ -334,7 +334,7 @@ function createModelClassMacro(className: string): MacroDefinition {
           id: resultOutId,
           type: "macroOutput",
           macroId: mId,
-          position: { x: 1350, y: 120 },
+          position: { x: 1420, y: 120 },
           data: { param: "result" },
         });
         edges.push({

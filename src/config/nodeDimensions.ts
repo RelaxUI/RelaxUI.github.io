@@ -12,6 +12,7 @@ export const NODE_DIMENSIONS: Record<string, NodeDimension> = {
   macroNode: { w: 260, h: 220, title: "MACRO NODE", sub: "sub-graph logic" },
   macroInEdge: { w: 180, h: 100, title: "MACRO IN (edge)", sub: "edge" },
   macroInParam: { w: 180, h: 100, title: "MACRO IN (param)", sub: "param" },
+  macroInSettings: { w: 180, h: 100, title: "MACRO IN (settings)", sub: "app settings" },
   macroOutput: { w: 180, h: 100, title: "MACRO OUT", sub: "pass through" },
   macroConnections: {
     w: 180,
@@ -24,15 +25,22 @@ export const NODE_DIMENSIONS: Record<string, NodeDimension> = {
   delay: { w: 220, h: 100, title: "DELAY", sub: "pause flow" },
   listAggregator: {
     w: 280,
-    h: 220,
+    h: 240,
     title: "LIST AGGREGATOR",
     sub: "collect items",
   },
   downloadData: { w: 240, h: 210, title: "DOWNLOAD DATA", sub: "multi-format" },
-  imageProcess: { w: 280, h: 420, title: "IMAGE PROCESS", sub: "resize/convert" },
+  imageProcess: { w: 280, h: 460, title: "IMAGE PROCESS", sub: "resize/convert" },
   reviewNode: { w: 220, h: 160, title: "REVIEW", sub: "manual approval" },
   converter: { w: 220, h: 160, title: "CONVERTER", sub: "format convert" },
   pollUntil: { w: 260, h: 280, title: "POLL UNTIL", sub: "queue polling" },
+  textTemplate: { w: 260, h: 220, title: "TEXT TEMPLATE", sub: "interpolation" },
+  switchNode: { w: 220, h: 200, title: "SWITCH", sub: "conditional route" },
+  mergeNode: { w: 220, h: 180, title: "MERGE", sub: "combine inputs" },
+  stringOps: { w: 240, h: 200, title: "STRING OPS", sub: "text transform" },
+  counterNode: { w: 240, h: 240, title: "COUNTER", sub: "increment" },
+  commentNode: { w: 260, h: 140, title: "COMMENT", sub: "annotation" },
+  chatNode: { w: 340, h: 400, title: "CHAT", sub: "message display" },
   // Transformers.js nodes
   transformersPipeline: {
     w: 300,

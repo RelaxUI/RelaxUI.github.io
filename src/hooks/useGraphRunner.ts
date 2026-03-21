@@ -20,6 +20,7 @@ export function useGraphRunner() {
   );
 
   const runnerRef = useRef<GraphRunner | null>(null);
+  const liveNodesRef = useRef<FlowNode[]>([]);
   const nodeStartTimes = useRef<Record<string, number>>({});
 
   const clearDisplayData = useCallback((nodeId: string) => {
@@ -35,7 +36,7 @@ export function useGraphRunner() {
   }, []);
 
   const rejectApproval = useCallback((nodeId: string) => {
-    runnerRef.current?.pendingApprovals?.get(nodeId)?.reject({ action: "cancel" });
+    runnerRef.current?.pendingApprovals?.get(nodeId)?.resolve({ action: "cancel" });
   }, []);
 
   const pauseNode = useCallback((nodeId: string) => {
@@ -48,6 +49,17 @@ export function useGraphRunner() {
 
   const stopNode = useCallback((nodeId: string) => {
     runnerRef.current?.stopNode(nodeId);
+  }, []);
+
+  const stopFlow = useCallback(() => {
+    if (runnerRef.current) {
+      runnerRef.current.stop();
+      setRunStatus("IDLE");
+      setDisplayData({});
+      setNodeErrors({});
+      setComputingNodes(new Set());
+      setExecutionTimes({});
+    }
   }, []);
 
   const triggerEdge = useCallback((id: string) => {
@@ -102,6 +114,12 @@ export function useGraphRunner() {
           onNodeStart: (id) => {
             nodeStartTimes.current[id] = Date.now();
             setComputingNodes((prev) => new Set(prev).add(id));
+            setNodeErrors((prev) => {
+              if (!prev[id]) return prev;
+              const next = { ...prev };
+              delete next[id];
+              return next;
+            });
           },
           onNodeEnd: (id) => {
             const startTime = nodeStartTimes.current[id];
@@ -141,6 +159,8 @@ export function useGraphRunner() {
         },
       );
       runnerRef.current = runner;
+      liveNodesRef.current = nodes;
+      runner.setLiveNodesRef(liveNodesRef);
       runner.start();
     },
     [handleDisplayDataUpdate, triggerEdge],
@@ -155,6 +175,7 @@ export function useGraphRunner() {
     modelLoadingState,
     executionTimes,
     runFlow,
+    stopFlow,
     setDisplayData,
     setNodeErrors,
     clearDisplayData,
@@ -164,5 +185,6 @@ export function useGraphRunner() {
     resumeNode,
     stopNode,
     runnerRef,
+    liveNodesRef,
   };
 }
